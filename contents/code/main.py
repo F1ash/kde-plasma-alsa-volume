@@ -64,6 +64,9 @@ class plasmaVolume(plasmascript.Applet):
 		self.layout.setSpacing(0)
 
 		self.connect(self.applet, SIGNAL('destroyed()'), self.eventClose)
+		self.connect(self, SIGNAL('destroyed()'), self.eventClose)
+		self.connect(self, SIGNAL('ready()'), self.startWaitingVolumeChange)
+		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
 
 		self.icon = Plasma.IconWidget()
 		kdehome = unicode(KGlobal.dirs().localkdedir())
@@ -111,13 +114,21 @@ class plasmaVolume(plasmascript.Applet):
 			self.showPanelDevices()
 
 		self.setLayout(self.layout)
-		self.startWaitingVolumeChange()
 
 	def startWaitingVolumeChange(self):
 		global Flag
-		Flag = T(self)
 		if not Flag.isRunning() :
+			Flag = T(self)
 			Flag.start()
+			# print 'waiting start'
+
+	def stopWaitingVolumeChange(self):
+		global Flag
+		Flag.terminate()
+		while Flag.isRunning() :
+			Flag.quit()
+			time.sleep(0.05)
+		# print 'waiting stop'
 
 	def showContent(self):
 		global Flag
@@ -232,6 +243,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.layout.addItem(self.layoutSliders)
 
 		self.setLayout(self.layout)
+		self.emit(SIGNAL('ready()'))
 
 	def showSliders(self):
 		if self.Dialog.isVisible():
@@ -262,6 +274,7 @@ class plasmaVolume(plasmascript.Applet):
 		dialog.exec_()
 
 	def configAccepted(self):
+		self.emit(SIGNAL('killThread()'))
 		self.selectDevice.refreshPanelDevices(self)
 		self.interfaceSettings.refreshInterfaceSettings(self)
 		self.showPanelDevices()
@@ -287,10 +300,7 @@ class plasmaVolume(plasmascript.Applet):
 			finally :
 				pass
 			i += 1
-		Flag.terminate()
-		while Flag.isRunning() :
-			Flag.exit()
-			time.sleep(0.05)
+		self.emit(SIGNAL('killThread()'))
 		self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
 		sys.stderr.close()
