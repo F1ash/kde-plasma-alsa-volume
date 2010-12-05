@@ -9,7 +9,9 @@ try :
 	from PyKDE4.kdeui import *
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
-	import os, alsaaudio, os.path, string, select, threading, time
+	import os, alsaaudio, os.path, string, select, threading, time, sys
+	sys.stderr = open('/dev/shm/errorPlasmaVolume' + str(time.time()) + '.log','w')
+	sys.stdout = open('/dev/shm/outPlasmaVolume' + str(time.time()) + '.log','w')
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
@@ -24,6 +26,7 @@ class T(QThread):
 
 	def run(self):
 		while True :
+			x = ''
 			try:
 				eventDevice = alsaaudio.Mixer()
 				fds = eventDevice.polldescriptors()
@@ -38,6 +41,8 @@ class T(QThread):
 			except select.error, x:
 				print x
 			except Exception, x:
+				print x
+			except x :
 				print x
 			finally :
 				pass
@@ -101,10 +106,6 @@ class plasmaVolume(plasmascript.Applet):
 			self.Dialog.layout.addWidget(labelMsg,0,0)
 			self.Dialog.setLayout(self.Dialog.layout)
 		else:
-			#self.Timer = QTimer()
-			#self.Timer.setInterval(90)
-			#self.Timer.timeout.connect(self.startWaitingVolumeChange)
-			#self.Timer.start()
 			self.Mutex = QMutex()
 			self.showContent()
 			self.showPanelDevices()
@@ -147,11 +148,9 @@ class plasmaVolume(plasmascript.Applet):
 				if (type(self.ao[i].Mute_) is not str):
 					self.Dialog.layout.addWidget(self.ao[i].Mute_,i,2)
 					self.ao[i].Mute_.clicked.connect(self.ao[i].setMuted_)
-					#Flag.finished.connect(self.ao[i].setMuted_timeout)
 					self.connect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
 
 				self.Mutex.lock()
-				#Flag.finished.connect(self.ao[i].setVolume_timeout)
 				self.connect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
 				self.Mutex.unlock()
 			else:
@@ -272,8 +271,6 @@ class plasmaVolume(plasmascript.Applet):
 
 	def eventClose(self):
 		global Flag
-		#self.Timer.timeout.disconnect(self.startWaitingVolumeChange)
-		#self.Timer.stop()
 		i = 0
 		x = ''
 		for audioDevice in alsaaudio.mixers():
@@ -281,9 +278,10 @@ class plasmaVolume(plasmascript.Applet):
 				#print audioDevice
 				self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
 				self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
-				# Flag.finished.disconnect(self.ao[i].setMuted_timeout)
-				# Flag.finished.disconnect(self.ao[i].setVolume_timeout)
 			except TypeError, x:
+				#print x
+				pass
+			except x :
 				#print x
 				pass
 			finally :
@@ -295,6 +293,8 @@ class plasmaVolume(plasmascript.Applet):
 			time.sleep(0.05)
 		self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
+		sys.stderr.close()
+		sys.stdout.close()
 		#self.close()
 
 class AudioOutput():
@@ -332,11 +332,8 @@ class AudioOutput():
 			pass
 
 	def setVolume_timeout(self):
-		#self.Parent.Mutex.lock()
 		vol_ = alsaaudio.Mixer(self.mix).getvolume()
-		#if self.oldValue != vol_ :
 		self.setVolume(int(min(vol_)))
-		#self.Parent.Mutex.unlock()
 
 	def setMuted_(self):
 		Mute = 0
@@ -401,8 +398,6 @@ class DevicePanel(QWidget):
 
 		self.layout = QGridLayout()
 
-		#self.Settings = QSettings('plasmaVolume','plasmaVolume')
-
 		i = 0
 		str_raw = (obj.Settings.value('PanelDevices')).toString()
 		self.presentDevices = []
@@ -415,9 +410,7 @@ class DevicePanel(QWidget):
 				self.presentDevices[i].name = str_
 				if str_ in listPanelDevices:
 					self.presentDevices[i].setCheckState(2)
-				#presentDevicesLabel = QLabel(QString(item_.name))
 				self.layout.addWidget(self.presentDevices[i], i, 0)
-				#self.layout.addWidget(presentDevicesLabel, i, 1)
 				i += 1
 
 		self.setLayout(self.layout)
@@ -467,7 +460,15 @@ class InterfaceSettings(QWidget):
 
 		obj.Settings.sync()
 
-def CreateApplet(parent):
-	return plasmaVolume(parent)
+try :
+	def CreateApplet(parent):
+		return plasmaVolume(parent)
+except x :
+	print x
+finally :
+	#sys.stderr.close()
+	#sys.stdout.close()
+	pass
 
+x = ''
 Flag = T()
