@@ -65,7 +65,6 @@ class plasmaVolume(plasmascript.Applet):
 
 		self.connect(self.applet, SIGNAL('destroyed()'), self.eventClose)
 		self.connect(self, SIGNAL('destroyed()'), self.eventClose)
-		self.connect(self, SIGNAL('ready()'), self.startWaitingVolumeChange)
 		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
 
 		self.icon = Plasma.IconWidget()
@@ -114,6 +113,8 @@ class plasmaVolume(plasmascript.Applet):
 			self.showPanelDevices()
 
 		self.setLayout(self.layout)
+		self.Timer = QTimer()
+		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
 
 	def startWaitingVolumeChange(self):
 		global Flag
@@ -243,7 +244,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.layout.addItem(self.layoutSliders)
 
 		self.setLayout(self.layout)
-		self.emit(SIGNAL('ready()'))
 
 	def showSliders(self):
 		if self.Dialog.isVisible():
