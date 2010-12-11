@@ -108,13 +108,15 @@ class plasmaVolume(plasmascript.Applet):
 			self.Dialog.layout.addWidget(labelMsg,0,0)
 			self.Dialog.setLayout(self.Dialog.layout)
 		else:
+			self.Timer = QTimer()
 			self.Mutex = QMutex()
 			self.showContent()
 			self.showPanelDevices()
 
 		self.setLayout(self.layout)
-		self.Timer = QTimer()
-		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
+		Plasma.ToolTipManager.self().setContent( self.icon, Plasma.ToolTipContent( \
+									self.icon.toolTip(), "<font color=blue><b>ALSA Volume Control</b></font>", \
+									self.icon.icon() ) )
 
 	def startWaitingVolumeChange(self):
 		global Flag
@@ -244,6 +246,8 @@ class plasmaVolume(plasmascript.Applet):
 		self.layout.addItem(self.layoutSliders)
 
 		self.setLayout(self.layout)
+
+		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
 
 	def showSliders(self):
 		if self.Dialog.isVisible():
