@@ -10,8 +10,6 @@ try :
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
 	import os, alsaaudio, os.path, string, select, threading, time, sys
-	sys.stderr = open('/dev/shm/errorPlasmaVolume' + str(time.time()) + '.log','w')
-	sys.stdout = open('/dev/shm/outPlasmaVolume' + str(time.time()) + '.log','w')
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
@@ -59,15 +57,10 @@ class plasmaVolume(plasmascript.Applet):
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 		self.panelDevices = string.split(str((self.Settings.value('PanelDevices')).toString()),',')
 
-		self.layout = QGraphicsLinearLayout(self.applet)
-		self.layout.setContentsMargins(1, 1, 1, 1)
-		self.layout.setSpacing(0)
-
 		self.connect(self.applet, SIGNAL('destroyed()'), self.eventClose)
 		self.connect(self, SIGNAL('destroyed()'), self.eventClose)
 		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
 
-		self.icon = Plasma.IconWidget()
 		kdehome = unicode(KGlobal.dirs().localkdedir())
 		# print kdehome
 
@@ -85,11 +78,10 @@ class plasmaVolume(plasmascript.Applet):
 		path_2 = '/usr/share/icons/sound_pV.png'
 		# print path_
 		if os.path.exists(path_):
-			self.icon.setIcon(path_)
+			self.path_ = path_
 		else:
-			self.icon.setIcon(path_2)
-		self.icon.setToolTip('SuperSimpleMixer')
-		self.connect(self.icon,SIGNAL('clicked()'), self.showSliders)
+			self.path_ = path_2
+		self.initIcon()
 
 		self.Dialog = Plasma.Dialog()
 		self.Dialog.setAspectRatioMode(Plasma.IgnoreAspectRatio)
@@ -108,15 +100,27 @@ class plasmaVolume(plasmascript.Applet):
 			self.Dialog.layout.addWidget(labelMsg,0,0)
 			self.Dialog.setLayout(self.Dialog.layout)
 		else:
-			self.Timer = QTimer()
+			#self.Timer = QTimer()
 			self.Mutex = QMutex()
 			self.showContent()
 			self.showPanelDevices()
 
 		self.setLayout(self.layout)
-		Plasma.ToolTipManager.self().setContent( self.icon, Plasma.ToolTipContent( \
-									self.icon.toolTip(), "<font color=blue><b>ALSA Volume Control</b></font>", \
-									self.icon.icon() ) )
+
+	def initIcon(self):
+		self.layout = QGraphicsLinearLayout(self.applet)
+		self.layout.setContentsMargins(1, 1, 1, 1)
+		self.layout.setSpacing(0)
+		self.layout.setMinimumSize(10, 10)
+
+		self.layoutSliders = QGraphicsGridLayout()
+		self.layoutSliders.setSpacing(0)
+
+		self.icon = Plasma.IconWidget()
+		self.icon.setIcon(self.path_)
+		self.icon.setToolTip('SuperSimpleMixer')
+		self.connect(self.icon, SIGNAL('clicked()'), self.showSliders)
+		self.icon.setMaximumSize(40.0,40.0)
 
 	def startWaitingVolumeChange(self):
 		global Flag
@@ -175,8 +179,12 @@ class plasmaVolume(plasmascript.Applet):
 		self.Dialog.setLayout(self.Dialog.layout)
 
 	def showPanelDevices(self):
-		self.layoutSliders = QGraphicsGridLayout()
-		self.layoutSliders.setSpacing(0)
+		if not (self.layout is None) :
+			self.layout.removeItem(self.icon)
+			del self.layout
+		if not (self.layoutSliders is None) :
+			del self.layoutSliders
+		self.initIcon()
 
 		if str(self.Settings.value('Icon_On').toString()) == '1'\
 							or ( self.panelDevices in [[],['']] ) :
@@ -184,9 +192,11 @@ class plasmaVolume(plasmascript.Applet):
 			self.icon.show()
 			# iconPresent = 20
 		else:
-			self.layout.removeItem(self.icon)
-			self.icon.close()
+			#self.layout.removeItem(self.icon)
+			#self.icon.close()
+			#del self.icon
 			# iconPresent = 0
+			pass
 
 		# str_raw = (self.Settings.value('PanelDevices')).toString()
 		# countPanelDevices = len(string.split(str(str_raw),','))
@@ -200,7 +210,8 @@ class plasmaVolume(plasmascript.Applet):
 				self.setMaximumWidth(35)
 			elif self.formFactor() in [Plasma.Planar, Plasma.MediaCenter] :
 				#self.resize(35,35)
-				self.setMaximumSize(100.0,100.0)
+				#self.setMaximumSize(100.0,100.0)
+				pass
 		else:
 			oriental_ = Qt.Vertical
 			style_ = self.style_vert
@@ -247,7 +258,13 @@ class plasmaVolume(plasmascript.Applet):
 
 		self.setLayout(self.layout)
 
-		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
+		#self.Timer.singleShot(2000, self.startWaitingVolumeChange)
+		QApplication.postEvent(self, QEvent(QEvent.User))
+
+	def customEvent(self, event):
+		if event.type() == QEvent.User :
+			self.startWaitingVolumeChange()
+		pass
 
 	def showSliders(self):
 		if self.Dialog.isVisible():
@@ -307,8 +324,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.emit(SIGNAL('killThread()'))
 		self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
-		sys.stderr.close()
-		sys.stdout.close()
 		#self.close()
 
 class AudioOutput():
@@ -480,8 +495,6 @@ try :
 except x :
 	print x
 finally :
-	#sys.stderr.close()
-	#sys.stdout.close()
 	pass
 
 x = ''
