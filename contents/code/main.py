@@ -9,7 +9,7 @@ try :
 	from PyKDE4.kdeui import *
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
-	import os, alsaaudio, os.path, string, select, threading, time, sys
+	import os, alsaaudio, os.path, string, select, time
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
@@ -51,27 +51,47 @@ class plasmaVolume(plasmascript.Applet):
 	def __init__(self,parent,args=None):
 		plasmascript.Applet.__init__(self,parent)
 
+	def initColor(self):
+		self.fontColourVar = self.initValue('fontColour')
+		self.sliderColour1Var = self.initValue('sliderColour1')
+		self.sliderColour2Var = self.initValue('sliderColour2')
+
+		kdehome = unicode(KGlobal.dirs().localkdedir())
+		# print kdehome
+
+		f = open(kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/style/style_horiz.css")
+		self.style_horiz = f.read(); f.close()
+		f = open(kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/style/style_vert.css")
+		self.style_vert = f.read(); f.close()
+		self.style_horiz = string.replace(self.style_horiz, "#FFF777", self.sliderColour1Var)
+		self.style_vert = string.replace(self.style_vert, "#FFF777", self.sliderColour1Var)
+		self.style_horiz = string.replace(self.style_horiz, "#2277FF", self.sliderColour2Var)
+		self.style_vert = string.replace(self.style_vert, "#2277FF", self.sliderColour2Var)
+
+	def initValue(self, key_):
+		if self.Settings.contains(key_) :
+			#print key_, Settings.value(key_).toString()
+			return self.Settings.value(key_).toString()
+		else :
+			self.Settings.setValue(key_, QVariant('0'))
+			#print key_, Settings.value(key_).toString()
+			return '0'
+
 	def init(self):
+		global Flag
+		Flag = T(self)
 		self.setHasConfigurationInterface(True)
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+		self.initColor()
 		self.panelDevices = string.split(str((self.Settings.value('PanelDevices')).toString()),',')
 
 		self.connect(self.applet, SIGNAL('destroyed()'), self.eventClose)
 		self.connect(self, SIGNAL('destroyed()'), self.eventClose)
 		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
+		self.connect(self, SIGNAL('refresh()'), self.refresh)
 
 		kdehome = unicode(KGlobal.dirs().localkdedir())
-		# print kdehome
-
-		self.style_horiz = open(\
-				kdehome +\
-				"share/apps/plasma/plasmoids/plasmaVolume/contents/style/style_horiz.css"\
-								).read()
-		self.style_vert = open(\
-				kdehome +\
-				"share/apps/plasma/plasmoids/plasmaVolume/contents/style/style_vert.css"\
-								).read()
 
 		path_1 = kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/sound.png"
 		path_ = os.path.expanduser(path_1)
@@ -87,7 +107,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.Dialog.setAspectRatioMode(Plasma.IgnoreAspectRatio)
 		self.Dialog.resizeCorners()
 		self.Dialog.setResizeHandleCorners( Plasma.Dialog.ResizeCorner(2) )
-		# self.Dialog.setGeometry(580,320,640,300)
 
 		self.Dialog.layout = QGridLayout()
 
@@ -111,7 +130,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.layout = QGraphicsLinearLayout(self.applet)
 		self.layout.setContentsMargins(1, 1, 1, 1)
 		self.layout.setSpacing(0)
-		self.layout.setMinimumSize(10, 10)
+		self.layout.setMinimumSize(10.0, 10.0)
 
 		self.layoutSliders = QGraphicsGridLayout()
 		self.layoutSliders.setSpacing(0)
@@ -120,22 +139,21 @@ class plasmaVolume(plasmascript.Applet):
 		self.icon.setIcon(self.path_)
 		self.icon.setToolTip('SuperSimpleMixer')
 		self.connect(self.icon, SIGNAL('clicked()'), self.showSliders)
-		self.icon.setMaximumSize(40.0,40.0)
+		self.icon.setMaximumSize(40.0, 40.0)
+
+		self.setMinimumSize(20.0, 20.0)
 
 	def startWaitingVolumeChange(self):
 		global Flag
 		if not Flag.isRunning() :
-			Flag = T(self)
 			Flag.start()
-			# print 'waiting start'
 
 	def stopWaitingVolumeChange(self):
 		global Flag
 		Flag.terminate()
-		while Flag.isRunning() :
-			Flag.quit()
-			time.sleep(0.05)
-		# print 'waiting stop'
+		while not Flag.wait() :
+			# Flag.quit()
+			time.sleep(0.5)
 
 	def showContent(self):
 		global Flag
@@ -159,7 +177,7 @@ class plasmaVolume(plasmascript.Applet):
 				self.sliderHandle[i].valueChanged.connect(self.ao[i].setVolume)
 
 				self.label += [name]
-				self.label[i] = QLabel("<font color=lime><b>" + name + "</b></font>")
+				self.label[i] = QLabel('<font color="' + self.fontColourVar + '"><b>' + name + '</b></font>')
 				self.label[i].setToolTip(name)
 				self.Dialog.layout.addWidget(self.label[i],i,1)
 
@@ -221,7 +239,8 @@ class plasmaVolume(plasmascript.Applet):
 				self.setMaximumHeight(35)
 			elif self.formFactor() in [Plasma.Planar, Plasma.MediaCenter] :
 				#self.resize(35,35)
-				self.setMaximumSize(100.0,100.0)
+				#self.setMaximumSize(100.0,100.0)
+				pass
 
 		# self.setMaximumSize(currentSize)
 
@@ -274,13 +293,13 @@ class plasmaVolume(plasmascript.Applet):
 			self.Dialog.move(self.popupPosition(self.Dialog.sizeHint()))
 
 	def createConfigurationInterface(self, parent):
-		self.fontSelect = FontWidget()
+		#self.fontSelect = FontWidget()
 		# p = parent.addPage(self.fontSelect, "Font")
-		self.colorSelect = ColorWidget()
-		# parent.addPage(self.colorSelect, "Color")
-		self.selectDevice = DevicePanel(self)
+		self.colorSelect = ColorWidget(parent)
+		parent.addPage(self.colorSelect, "Color")
+		self.selectDevice = DevicePanel(self, parent)
 		parent.addPage(self.selectDevice,"Panel Devices")
-		self.interfaceSettings = InterfaceSettings(self)
+		self.interfaceSettings = InterfaceSettings(parent)
 		parent.addPage(self.interfaceSettings, 'Interface')
 		self.connect(parent, SIGNAL("okClicked()"), self.configAccepted)
 		self.connect(parent, SIGNAL("cancelClicked()"), self.configDenied)
@@ -294,11 +313,20 @@ class plasmaVolume(plasmascript.Applet):
 		dialog.move(self.popupPosition(dialog.sizeHint()))
 		dialog.exec_()
 
+	def refresh(self):
+		self.Mutex.lock()
+		self.Settings.sync()
+		self.Mutex.unlock()
+		self.initColor()
+		self.showContent()
+		self.showPanelDevices()
+
 	def configAccepted(self):
 		self.emit(SIGNAL('killThread()'))
 		self.selectDevice.refreshPanelDevices(self)
-		self.interfaceSettings.refreshInterfaceSettings(self)
-		self.showPanelDevices()
+		self.interfaceSettings.refreshInterfaceSettings()
+		self.colorSelect.refreshInterfaceSettings()
+		self.emit(SIGNAL('refresh()'))
 
 	def configDenied(self):
 		pass
@@ -326,6 +354,8 @@ class plasmaVolume(plasmascript.Applet):
 		print "plasmaVolume destroyed manually."
 		#self.close()
 
+	def mouseDoubleClickEvent(self, ev):
+		self.showConfigurationInterface()
 class AudioOutput():
 	def __init__(self, mix = 'Master', parent = None, i = 0):
 
@@ -408,27 +438,16 @@ class AudioOutput():
 		obj.setValue(vol_)
 		obj.setToolTip(obj.name + ' ' + str(vol_) + '%')
 
-class FontWidget(QFontDialog):
-	def __init__(self, parent = None):
-		QFontDialog.__init__(self, parent)
-
-		fontSelect = []
-
-class ColorWidget(QColorDialog):
-	def __init__(self, parent = None):
-		QColorDialog.__init__(self, parent)
-
-		color = QColorDialog(QColor(QString('red')))
-		color.setVisible(True)
-
 class DevicePanel(QWidget):
 	def __init__(self, obj = None, parent = None):
 		QWidget.__init__(self, parent)
 
+		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+
 		self.layout = QGridLayout()
 
 		i = 0
-		str_raw = (obj.Settings.value('PanelDevices')).toString()
+		str_raw = (self.Settings.value('PanelDevices')).toString()
 		self.presentDevices = []
 		listPanelDevices = string.split(str(str_raw),',')
 		for item_ in obj.sliderHandle:
@@ -451,12 +470,14 @@ class DevicePanel(QWidget):
 				obj.panelDevices += [item_.name]
 
 		str_ = string.join(obj.panelDevices, ',')
-		obj.Settings.setValue('PanelDevices',str_)
-		obj.Settings.sync()
+		self.Settings.setValue('PanelDevices',str_)
+		self.Settings.sync()
 
 class InterfaceSettings(QWidget):
 	def __init__(self, obj = None, parent= None):
 		QWidget.__init__(self, parent)
+
+		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 
 		self.layout = QGridLayout()
 
@@ -464,7 +485,7 @@ class InterfaceSettings(QWidget):
 		self.list_ = []
 		for item_ in ['Icon_On', 'Vertical::widgetOrientation']:
 		# 'Vertical::panelOrientation',\
-			str_ = str((obj.Settings.value(item_)).toString())
+			str_ = str((self.Settings.value(item_)).toString())
 			self.list_ += [item_]
 			self.list_[i] = QCheckBox(item_)
 			self.list_[i].name = item_
@@ -479,23 +500,95 @@ class InterfaceSettings(QWidget):
 
 		self.setLayout(self.layout)
 
-	def refreshInterfaceSettings(self, obj):
-
+	def refreshInterfaceSettings(self):
 		for item_ in self.list_:
 			if item_.isChecked() :
-				obj.Settings.setValue(item_.name, '1')
+				self.Settings.setValue(item_.name, '1')
 			else:
-				obj.Settings.setValue(item_.name, '0')
+				self.Settings.setValue(item_.name, '0')
 
-		obj.Settings.sync()
+		self.Settings.sync()
+
+class ColorWidget(QWidget):
+	def __init__(self, obj = None, parent= None):
+		QWidget.__init__(self, parent)
+
+		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+
+		self.fontColourVar = self.initValue('fontColour')
+		self.sliderColour1Var = self.initValue('sliderColour1')
+		self.sliderColour2Var = self.initValue('sliderColour2')
+
+		self.layout = QGridLayout()
+
+		self.fontColourLabel = QLabel('<font color="' + self.fontColourVar + '">fontColour :</font>')
+		self.layout.addWidget(self.fontColourLabel, 0, 0)
+		self.fontColourButton = QPushButton()
+		self.fontColourButton.setText('Color')
+		self.connect(self.fontColourButton, SIGNAL('clicked()'), self.fontColour)
+		self.layout.addWidget(self.fontColourButton, 0, 1)
+
+		self.sliderColour1Label = QLabel('<font color="' + self.sliderColour1Var + '">sliderColour1 :</font>')
+		self.layout.addWidget(self.sliderColour1Label, 1, 0)
+		self.sliderColour1Button = QPushButton()
+		self.sliderColour1Button.setText('Color')
+		self.connect(self.sliderColour1Button, SIGNAL('clicked()'), self.sliderColour1)
+		self.layout.addWidget(self.sliderColour1Button, 1, 1)
+
+		self.sliderColour2Label = QLabel('<font color="' + self.sliderColour2Var + '">sliderColour2 :</font>')
+		self.layout.addWidget(self.sliderColour2Label, 2, 0)
+		self.sliderColour2Button = QPushButton()
+		self.sliderColour2Button.setText('Color')
+		self.connect(self.sliderColour2Button, SIGNAL('clicked()'), self.sliderColour2)
+		self.layout.addWidget(self.sliderColour2Button, 2, 1)
+
+		self.setLayout(self.layout)
+
+	def initValue(self, key_):
+		global Settings
+		if self.Settings.contains(key_) :
+			#print key_, Settings.value(key_).toString()
+			return self.Settings.value(key_).toString()
+		else :
+			self.Settings.setValue(key_, QVariant('0'))
+			#print key_, Settings.value(key_).toString()
+			return '0'
+
+	def getColour(self):
+		colour = QColorDialog(self)
+		colour.exec_()
+		selectColour = colour.selectedColor()
+		colour.done(0)
+		return selectColour.name()
+
+	def fontColour(self):
+		self.fontColourVar = self.getColour()
+		self.fontColourLabel.clear()
+		self.fontColourLabel.setText('<font color="' + self.fontColourVar + '">fontColour :</font>')
+
+	def sliderColour1(self):
+		self.sliderColour1Var = self.getColour()
+		self.sliderColour1Label.clear()
+		self.sliderColour1Label.setText('<font color="' + self.sliderColour1Var + '">sliderColour1 :</font>')
+
+	def sliderColour2(self):
+		self.sliderColour2Var = self.getColour()
+		self.sliderColour2Label.clear()
+		self.sliderColour2Label.setText('<font color="' + self.sliderColour2Var + '">sliderColour2 :</font>')
+
+	def refreshInterfaceSettings(self):
+		self.Settings.setValue('fontColour', QVariant(self.fontColourVar))
+		self.Settings.setValue('sliderColour1', QVariant(self.sliderColour1Var))
+		self.Settings.setValue('sliderColour2', QVariant(self.sliderColour2Var))
+		self.Settings.sync()
 
 try :
 	def CreateApplet(parent):
 		return plasmaVolume(parent)
+
+	x = ''
+	Flag = T()
 except x :
 	print x
 finally :
 	pass
-
-x = ''
-Flag = T()
