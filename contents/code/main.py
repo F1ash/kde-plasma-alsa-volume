@@ -356,6 +356,7 @@ class plasmaVolume(plasmascript.Applet):
 
 	def mouseDoubleClickEvent(self, ev):
 		self.showConfigurationInterface()
+
 class AudioOutput():
 	def __init__(self, mix = 'Master', parent = None, i = 0):
 
@@ -495,7 +496,7 @@ class InterfaceSettings(QWidget):
 			i += 1
 
 		labelDefaultInfo = QLabel()
-		labelDefaultInfo.setText('<font color=red><b>Default: Horizontal::widgetOrientation</b></font>')
+		labelDefaultInfo.setText('<font color=red><b>Default:<br>Horizontal::widgetOrientation</b></font>')
 		self.layout.addWidget(labelDefaultInfo,i,0)
 
 		self.setLayout(self.layout)
@@ -514,6 +515,10 @@ class ColorWidget(QWidget):
 		QWidget.__init__(self, parent)
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+		kdehome = unicode(KGlobal.dirs().localkdedir())
+
+		self.colourIconPath = kdehome + 'share/apps/plasma/plasmoids/plasmaVolume/contents/icons/color.png'
+		self.colourIcon = QIcon(self.colourIconPath)
 
 		self.fontColourVar = self.initValue('fontColour')
 		self.sliderColour1Var = self.initValue('sliderColour1')
@@ -523,22 +528,25 @@ class ColorWidget(QWidget):
 
 		self.fontColourLabel = QLabel('<font color="' + self.fontColourVar + '">fontColour :</font>')
 		self.layout.addWidget(self.fontColourLabel, 0, 0)
-		self.fontColourButton = QPushButton()
-		self.fontColourButton.setText('Color')
+		self.fontColourButton = QPushButton(self.colourIcon, '')
+		self.fontColourButton.setMaximumWidth(30)
+		self.fontColourButton.setToolTip('Slider Shield Font Color')
 		self.connect(self.fontColourButton, SIGNAL('clicked()'), self.fontColour)
 		self.layout.addWidget(self.fontColourButton, 0, 1)
 
 		self.sliderColour1Label = QLabel('<font color="' + self.sliderColour1Var + '">sliderColour1 :</font>')
 		self.layout.addWidget(self.sliderColour1Label, 1, 0)
-		self.sliderColour1Button = QPushButton()
-		self.sliderColour1Button.setText('Color')
+		self.sliderColour1Button = QPushButton(self.colourIcon, '')
+		self.sliderColour1Button.setMaximumWidth(30)
+		self.sliderColour1Button.setToolTip('Background Slider Color')
 		self.connect(self.sliderColour1Button, SIGNAL('clicked()'), self.sliderColour1)
 		self.layout.addWidget(self.sliderColour1Button, 1, 1)
 
 		self.sliderColour2Label = QLabel('<font color="' + self.sliderColour2Var + '">sliderColour2 :</font>')
 		self.layout.addWidget(self.sliderColour2Label, 2, 0)
-		self.sliderColour2Button = QPushButton()
-		self.sliderColour2Button.setText('Color')
+		self.sliderColour2Button = QPushButton(self.colourIcon, '')
+		self.sliderColour2Button.setMaximumWidth(30)
+		self.sliderColour2Button.setToolTip('Slider Color')
 		self.connect(self.sliderColour2Button, SIGNAL('clicked()'), self.sliderColour2)
 		self.layout.addWidget(self.sliderColour2Button, 2, 1)
 
