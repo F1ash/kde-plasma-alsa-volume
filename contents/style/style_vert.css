@@ -9,7 +9,7 @@ QSlider {
 
 QSlider::groove:vertical {
 	border: 1px solid #999999; /* last change */
-	background: #FFEE55;
+	background:  rgba(0,0,0,0);  /* #FFEE55; */
 	position: absolute; /* абсолютная позиция в 4px слева и справа от виджета. установка полей виджета также будет работать... */
 	/* left: 4px; right: 4px; */
 	margin: 1px 0 -1px; /* last change */
