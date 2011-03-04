@@ -55,6 +55,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.fontColourVar = self.initValue('fontColour')
 		self.sliderColour1Var = self.initValue('sliderColour1')
 		self.sliderColour2Var = self.initValue('sliderColour2')
+		self.handlerColourVar = self.initValue('handlerColour')
 
 		kdehome = unicode(KGlobal.dirs().localkdedir())
 		# print kdehome
@@ -65,10 +66,13 @@ class plasmaVolume(plasmascript.Applet):
 		self.style_vert = f.read(); f.close()
 		sliderColour1 = ColorWidget().getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
 		sliderColour2 = ColorWidget().getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
+		handlerColour = ColorWidget().getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
 		self.style_horiz = string.replace(self.style_horiz, "#FFF777", sliderColour1)
 		self.style_vert = string.replace(self.style_vert, "#FFF777", sliderColour1)
 		self.style_horiz = string.replace(self.style_horiz, "#2277FF", sliderColour2)
 		self.style_vert = string.replace(self.style_vert, "#2277FF", sliderColour2)
+		self.style_horiz = string.replace(self.style_horiz, "#CCCCCC", handlerColour)
+		self.style_vert = string.replace(self.style_vert, "#CCCCCC", handlerColour)
 
 	def initValue(self, key_):
 		if self.Settings.contains(key_) :
@@ -92,6 +96,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.connect(self, SIGNAL('destroyed()'), self.eventClose)
 		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
 		self.connect(self, SIGNAL('refresh()'), self.refresh)
+		self.connect(self, SIGNAL('refreshByDP()'), self.refreshByDevicePanel)
 
 		kdehome = unicode(KGlobal.dirs().localkdedir())
 
@@ -363,6 +368,11 @@ class plasmaVolume(plasmascript.Applet):
 		self.showPanelDevices()
 		self.showSliders()
 
+	def refreshByDevicePanel(self):
+		self.initContent()
+		self.showPanelDevices()
+		self.showConfigurationInterface()
+
 	def refresh(self):
 		self.Mutex.lock()
 		self.Settings.sync()
@@ -524,11 +534,22 @@ class DevicePanel(QWidget):
 	def __init__(self, obj = None, parent = None):
 		QWidget.__init__(self, parent)
 
+		self.Parent = parent
+		self.Applet = obj
+
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+		kdehome = unicode(KGlobal.dirs().localkdedir())
+
+		self.refreshIconPath = kdehome + 'share/apps/plasma/plasmoids/plasmaVolume/contents/icons/refresh.png'
+		self.refreshIcon = QIcon(self.refreshIconPath)
 
 		self.layout = QGridLayout()
 
 		i = 0
+		self.rescanButton = QPushButton(self.refreshIcon, '')
+		self.rescanButton.setToolTip('Rescan')
+		self.rescanButton.clicked.connect(self.rescan)
+		self.layout.addWidget(self.rescanButton, i, 1); i = + 1
 		str_raw = (self.Settings.value('PanelDevices')).toString()
 		self.presentDevices = []
 		listPanelDevices = string.split(str(str_raw),',')
@@ -536,14 +557,18 @@ class DevicePanel(QWidget):
 			if (type(item_) is not str) :
 				str_ = item_.name
 				self.presentDevices += [str_]
-				self.presentDevices[i] = QCheckBox(str_)
-				self.presentDevices[i].name = str_
+				self.presentDevices[i - 1] = QCheckBox(str_)
+				self.presentDevices[i - 1].name = str_
 				if str_ in listPanelDevices:
-					self.presentDevices[i].setCheckState(2)
-				self.layout.addWidget(self.presentDevices[i], i, 0)
+					self.presentDevices[i - 1].setCheckState(2)
+				self.layout.addWidget(self.presentDevices[i - 1], i, 0)
 				i += 1
 
 		self.setLayout(self.layout)
+
+	def rescan(self):
+		self.Parent.done(0)
+		self.Applet.emit(SIGNAL('refreshByDP()'))
 
 	def refreshPanelDevices(self, obj):
 		obj.panelDevices = []
@@ -604,6 +629,7 @@ class ColorWidget(QWidget):
 		self.fontColourVar = self.initValue('fontColour')
 		self.sliderColour1Var = self.initValue('sliderColour1')
 		self.sliderColour2Var = self.initValue('sliderColour2')
+		self.handlerColourVar = self.initValue('handlerColour')
 
 		self.layout = QGridLayout()
 
@@ -633,6 +659,15 @@ class ColorWidget(QWidget):
 		self.sliderColour2Button.setToolTip('Slider Color')
 		self.connect(self.sliderColour2Button, SIGNAL('clicked()'), self.sliderColour2)
 		self.layout.addWidget(self.sliderColour2Button, 2, 1)
+
+		self.handlerColourLabel = QLabel('handlerColour :')
+		self.handlerColourLabel.setStyleSheet(self.getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True)))
+		self.layout.addWidget(self.handlerColourLabel, 3, 0)
+		self.handlerColourButton = QPushButton(self.colourIcon, '')
+		self.handlerColourButton.setMaximumWidth(30)
+		self.handlerColourButton.setToolTip('handler Color')
+		self.connect(self.handlerColourButton, SIGNAL('clicked()'), self.handlerColour)
+		self.layout.addWidget(self.handlerColourButton, 3, 1)
 
 		self.setLayout(self.layout)
 
@@ -689,10 +724,19 @@ class ColorWidget(QWidget):
 			self.sliderColour2Label.setStyleSheet(style)
 			self.sliderColour2Label.setText('sliderColour2 :')
 
+	def handlerColour(self):
+		colour, yes, style = self.getColour(QString(self.handlerColourVar).toUInt())
+		if yes :
+			self.handlerColourVar = colour
+			self.handlerColourLabel.clear()
+			self.handlerColourLabel.setStyleSheet(style)
+			self.handlerColourLabel.setText('handlerColour :')
+
 	def refreshInterfaceSettings(self):
 		self.Settings.setValue('fontColour', self.fontColourVar)
 		self.Settings.setValue('sliderColour1', self.sliderColour1Var)
 		self.Settings.setValue('sliderColour2', self.sliderColour2Var)
+		self.Settings.setValue('handlerColour', self.handlerColourVar)
 		self.Settings.sync()
 
 try :
