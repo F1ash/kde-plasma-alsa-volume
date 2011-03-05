@@ -164,9 +164,7 @@ class plasmaVolume(plasmascript.Applet):
 	def initContent(self):
 		if 'Dialog' in dir(self) :
 			del self.Dialog
-			self.Dialog = QWidget()     ##Plasma.Dialog()
-			#self.Dialog.setAspectRatioMode(Plasma.IgnoreAspectRatio)
-			#self.Dialog.setResizeHandleCorners( Plasma.Dialog.ResizeCorner(2) )
+			self.Dialog = QWidget()
 			self.Dialog.layout = QGridLayout()
 			if 'Scroll' in dir(self) :
 				del self.Scroll
@@ -190,25 +188,35 @@ class plasmaVolume(plasmascript.Applet):
 		i = 0
 		listAllDevices = []
 		cardList = alsaaudio.cards()
-		for card in xrange(len(cardList)) :
+		cardIndexList = []
+		for card in xrange(100) :
+			try:
+				if alsaaudio.mixers(card) :
+					cardIndexList += [card]
+					#print card, alsaaudio.mixers(card), cardList[i]; i += 1
+			except alsaaudio.ALSAAudioError :
+				#print card, ' error'
+				continue
+		i = 0
+		for card in cardIndexList :
 			for audioDevice in alsaaudio.mixers(card) :
-				listAllDevices += [ (audioDevice, card) ]
+				listAllDevices += [ (audioDevice, card, cardList[i]) ]
+			i += 1
 		#print listAllDevices
-		#for audioDevice in alsaaudio.mixers():
+		i = 0
 		for audioDevice in listAllDevices :
 			name = str(audioDevice[0])
 			cardIndex = audioDevice[1]
-			card = str(cardList[ cardIndex ])
+			card = audioDevice[2]
 			#print name, cardIndex, card
 			self.ao += [name]
 			self.ao[i] = AudioOutput(name, self, i, cardIndex)
-			# print name, 'Ok'
 			if not ( self.ao[i].capability in [ [], [''] ] ) :
 
 				self.sliderHandle += [name]
 				self.sliderHandle[i] = QSlider(Qt.Horizontal)
 				self.sliderHandle[i].setTickPosition(2)
-				self.sliderHandle[i].name = name + '\\' + card
+				self.sliderHandle[i].name = name + ' \\ ' + card
 				self.ao[i].setCurrentValue(self.sliderHandle[i])
 				self.Dialog.layout.addWidget(self.sliderHandle[i],i+1,5)
 				self.sliderHandle[i].valueChanged.connect(self.ao[i].setVolume)
