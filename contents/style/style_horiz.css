@@ -11,7 +11,7 @@ QSlider::groove:horizontal {
 	border: 1px solid rgba(0,0,0,0); /* #999999; */
 	position: absolute;
 	/* height: 3px; /* по умолчанию бороздка расширяется до размеров ползунка. задав высоту она принимает фиксированный размер */
-	background: #FFEE55; /* qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4); */
+	background: rgba(0,0,0,0);  /* #FFEE55; */ /* qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4); */
 	margin: 0 -1px;
 }
 
