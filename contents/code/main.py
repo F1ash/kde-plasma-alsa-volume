@@ -67,6 +67,7 @@ class plasmaVolume(plasmascript.Applet):
 		sliderColour1 = ColorWidget().getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
 		sliderColour2 = ColorWidget().getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
 		handlerColour = ColorWidget().getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
+		print sliderColour1, sliderColour2, handlerColour
 		self.style_horiz = string.replace(self.style_horiz, "#FFF777", sliderColour1)
 		self.style_vert = string.replace(self.style_vert, "#FFF777", sliderColour1)
 		self.style_horiz = string.replace(self.style_horiz, "#2277FF", sliderColour2)
@@ -74,14 +75,17 @@ class plasmaVolume(plasmascript.Applet):
 		self.style_horiz = string.replace(self.style_horiz, "#CCCCCC", handlerColour)
 		self.style_vert = string.replace(self.style_vert, "#CCCCCC", handlerColour)
 
-	def initValue(self, key_):
+	def initValue(self, key_, default = '0'):
+		global Settings
 		if self.Settings.contains(key_) :
 			#print key_, Settings.value(key_).toString()
 			return self.Settings.value(key_).toString()
 		else :
-			self.Settings.setValue(key_, QVariant('0'))
+			if default == '0' :
+				default = ColorWidget().getSystemColor('int')
+			self.Settings.setValue(key_, QVariant(default))
 			#print key_, Settings.value(key_).toString()
-			return '0'
+			return default
 
 	def init(self):
 		global Flag
@@ -158,7 +162,7 @@ class plasmaVolume(plasmascript.Applet):
 		global Flag
 		Flag.terminate()
 		while not Flag.wait() :
-			# Flag.quit()
+			Flag.quit()
 			time.sleep(0.5)
 
 	def initContent(self):
@@ -685,9 +689,20 @@ class ColorWidget(QWidget):
 			#print key_, Settings.value(key_).toString()
 			return self.Settings.value(key_).toString()
 		else :
+			if default == '0' :
+				default = self.getSystemColor('int')
 			self.Settings.setValue(key_, QVariant(default))
 			#print key_, Settings.value(key_).toString()
 			return default
+
+	def getSystemColor(self, key_ = ''):
+		currentBrush = QPalette().buttonText()
+		colour = currentBrush.color()
+		if key_ == 'int' :
+			# print colour.rgba()
+			return colour.rgba()
+		else :
+			return str(colour.getRgb())
 
 	def getRGBaStyle(self, (colour, yes), str_ = 'label'):
 		if yes :
@@ -697,9 +712,9 @@ class ColorWidget(QWidget):
 				style = 'rgba' + str(QColor().fromRgba(colour).getRgb())
 		else :
 			if str_ == 'label' :
-				style = 'QLabel { color: rgba(0, 0, 0, 125);} '
+				style = 'QLabel { color: rgba' + self.getSystemColor() + ';} '
 			else :
-				style = 'rgba(0, 0, 0, 125);'
+				style = 'rgba' + self.getSystemColor()
 		return style
 
 	def getColour(self, (currentColour, yes)):
