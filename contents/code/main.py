@@ -47,6 +47,9 @@ class T(QThread):
 
 		return
 
+	def _terminate(self):
+		self.terminate()
+
 class plasmaVolume(plasmascript.Applet):
 	def __init__(self,parent,args=None):
 		plasmascript.Applet.__init__(self,parent)
@@ -160,10 +163,10 @@ class plasmaVolume(plasmascript.Applet):
 
 	def stopWaitingVolumeChange(self):
 		global Flag
-		Flag.terminate()
+		Flag._terminate()
 		while not Flag.wait() :
 			Flag.quit()
-			time.sleep(0.5)
+			time.sleep(0.1)
 
 	def initContent(self):
 		self.initColor()
