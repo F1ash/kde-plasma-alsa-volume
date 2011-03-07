@@ -67,7 +67,7 @@ class plasmaVolume(plasmascript.Applet):
 		sliderColour1 = ColorWidget().getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
 		sliderColour2 = ColorWidget().getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
 		handlerColour = ColorWidget().getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
-		print sliderColour1, sliderColour2, handlerColour
+		#print sliderColour1, sliderColour2, handlerColour
 		self.style_horiz = string.replace(self.style_horiz, "#FFF777", sliderColour1)
 		self.style_vert = string.replace(self.style_vert, "#FFF777", sliderColour1)
 		self.style_horiz = string.replace(self.style_horiz, "#2277FF", sliderColour2)
@@ -166,6 +166,7 @@ class plasmaVolume(plasmascript.Applet):
 			time.sleep(0.5)
 
 	def initContent(self):
+		self.initColor()
 		if 'Dialog' in dir(self) :
 			del self.Dialog
 			self.Dialog = QWidget()
@@ -389,7 +390,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.Mutex.lock()
 		self.Settings.sync()
 		self.Mutex.unlock()
-		self.initColor()
 		self.initContent()
 		self.showPanelDevices()
 
