@@ -16,10 +16,10 @@ finally:
 	'O`key'
 
 class T(QThread):
-	def __init__(self, parent = None):
+	def __init__(self, obj = None, parent = None):
 		QThread.__init__(self)
 
-		self.Parent = parent
+		self.Parent = obj
 		self.setTerminationEnabled(True)
 
 	def run(self):
@@ -31,8 +31,6 @@ class T(QThread):
 				pollingObj = select.poll()
 				pollingObj.register(fds[0][0],fds[0][1])
 				pollingObj.poll()
-				# QApplication.postEvent(self.Parent, QEvent(QEvent.User))
-				# print str(QEvent(QEvent.User).type())
 				self.Parent.emit(SIGNAL('changed()'))
 			except ALSAAudioError, x:
 				print x
@@ -48,7 +46,7 @@ class T(QThread):
 		return
 
 	def _terminate(self):
-		self.terminate()
+		self.quit()
 
 class plasmaVolume(plasmascript.Applet):
 	def __init__(self,parent,args=None):
@@ -91,9 +89,9 @@ class plasmaVolume(plasmascript.Applet):
 			return default
 
 	def init(self):
-		global Flag
-		Flag = T(self)
+		self.Flag = T(obj = self)
 		self.setHasConfigurationInterface(True)
+		self.loop = QEventLoop()
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 		self.initColor()
@@ -104,6 +102,8 @@ class plasmaVolume(plasmascript.Applet):
 		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
 		self.connect(self, SIGNAL('refresh()'), self.refresh)
 		self.connect(self, SIGNAL('refreshByDP()'), self.refreshByDevicePanel)
+		self.connect(self, SIGNAL('finished()'), self.loop, SLOT(self.Flag._terminate()))
+
 
 		kdehome = unicode(KGlobal.dirs().localkdedir())
 
@@ -157,16 +157,11 @@ class plasmaVolume(plasmascript.Applet):
 		#self.setMinimumSize(20.0, 20.0)
 
 	def startWaitingVolumeChange(self):
-		global Flag
-		if not Flag.isRunning() :
-			Flag.start()
+		if not self.Flag.isRunning() :
+			self.Flag.start()
 
 	def stopWaitingVolumeChange(self):
-		global Flag
-		Flag._terminate()
-		while not Flag.wait() :
-			Flag.quit()
-			time.sleep(0.1)
+		self.loop.quit()
 
 	def initContent(self):
 		self.initColor()
@@ -189,12 +184,11 @@ class plasmaVolume(plasmascript.Applet):
 			self.Dialog.layout.addWidget(self.panelNameLabel,0,1)
 			self.Dialog.layout.addWidget(self.rescanDevices,0,5)
 
-		global Flag
 		self.sliderHandle = []
 		self.label = []
 		self.ao = []
 		i = 0
-		listAllDevices = []
+		self.listAllDevices = []
 		cardList = alsaaudio.cards()
 		cardIndexList = []
 		for card in xrange(100) :
@@ -208,11 +202,11 @@ class plasmaVolume(plasmascript.Applet):
 		i = 0
 		for card in cardIndexList :
 			for audioDevice in alsaaudio.mixers(card) :
-				listAllDevices += [ (audioDevice, card, cardList[i]) ]
+				self.listAllDevices += [ (audioDevice, card, cardList[i]) ]
 			i += 1
 		#print listAllDevices
 		i = 0
-		for audioDevice in listAllDevices :
+		for audioDevice in self.listAllDevices :
 			name = str(audioDevice[0])
 			cardIndex = audioDevice[1]
 			card = audioDevice[2]
@@ -348,7 +342,6 @@ class plasmaVolume(plasmascript.Applet):
 	def customEvent(self, event):
 		if event.type() == QEvent.User :
 			self.startWaitingVolumeChange()
-		pass
 
 	def showSliders(self):
 		if self.ScrollWidget.isVisible():
@@ -358,8 +351,6 @@ class plasmaVolume(plasmascript.Applet):
 			self.ScrollWidget.show()
 
 	def createConfigurationInterface(self, parent):
-		#self.fontSelect = FontWidget()
-		# p = parent.addPage(self.fontSelect, "Font")
 		self.colorSelect = ColorWidget(parent)
 		parent.addPage(self.colorSelect, "Color")
 		self.selectDevice = DevicePanel(self, parent)
@@ -407,12 +398,9 @@ class plasmaVolume(plasmascript.Applet):
 		pass
 
 	def eventClose(self):
-		global Flag
-		i = 0
 		x = ''
-		for audioDevice in alsaaudio.mixers():
+		for i in xrange(len(self.listAllDevices)) :
 			try :
-				#print audioDevice
 				self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
 				self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
 			except TypeError, x:
@@ -423,7 +411,6 @@ class plasmaVolume(plasmascript.Applet):
 				pass
 			finally :
 				pass
-			i += 1
 		self.emit(SIGNAL('killThread()'))
 		self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
@@ -765,13 +752,5 @@ class ColorWidget(QWidget):
 		self.Settings.setValue('handlerColour', self.handlerColourVar)
 		self.Settings.sync()
 
-try :
-	def CreateApplet(parent):
-		return plasmaVolume(parent)
-
-	x = ''
-	Flag = T()
-except x :
-	print x
-finally :
-	pass
+def CreateApplet(parent):
+	return plasmaVolume(parent)
