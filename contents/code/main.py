@@ -105,11 +105,11 @@ class plasmaVolume(plasmascript.Applet):
 		self.connect(self, SIGNAL('finished()'), self.loop, SLOT(self.Flag._terminate()))
 
 
-		kdehome = unicode(KGlobal.dirs().localkdedir())
+		self.kdehome = unicode(KGlobal.dirs().localkdedir())
 
-		path_1 = kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/sound.png"
+		path_1 = self.kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/sound.png"
 		path_ = os.path.expanduser(path_1)
-		path_2 = '/usr/share/icons/sound_pV.png'
+		path_2 = '/usr/share/icons/sound.png'
 		# print path_
 		if os.path.exists(path_):
 			self.path_ = path_
@@ -175,14 +175,15 @@ class plasmaVolume(plasmascript.Applet):
 			self.Scroll = QScrollArea()
 
 			fontStyle = ColorWidget().getRGBaStyle((QString(self.fontColourVar).toUInt()[0], True))
-			self.rescanDevices = QPushButton()
-			self.rescanDevices.setStyleSheet(fontStyle)
-			self.rescanDevices.setText('Rescan')
+			iconPath = self.kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/refresh.png"
+			self.rescanDevices = QPushButton(QIcon(iconPath), '')
+			#self.rescanDevices.setStyleSheet(fontStyle)
+			self.rescanDevices.setToolTip('Rescan')
 			self.rescanDevices.clicked.connect(self.rescan)
 			self.panelNameLabel = QLabel('<b>Common Device Panel</b>')
 			self.panelNameLabel.setStyleSheet(fontStyle)
 			self.Dialog.layout.addWidget(self.panelNameLabel,0,1)
-			self.Dialog.layout.addWidget(self.rescanDevices,0,5)
+			self.Dialog.layout.addWidget(self.rescanDevices,0,2)
 
 		self.sliderHandle = []
 		self.label = []
@@ -428,6 +429,9 @@ class AudioOutput():
 		self.mix = mix
 		self.cardIndex = cardIndex
 
+		kdehome = unicode(KGlobal.dirs().localkdedir())
+		self.path_ = kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/play.png"
+
 		self.mixerID = None
 		for _id in xrange(100) :				## how much?
 			try :
@@ -446,8 +450,6 @@ class AudioOutput():
 			# print self.oldValue, self.capability
 			try :
 				self.Mixer.getmute()
-				self.Mute_ = QPushButton()
-				self.Mute_.setText('Mute')
 				Mute = 0
 				for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute() :
 					Mute += int(i)
@@ -457,6 +459,8 @@ class AudioOutput():
 				else:
 					MuteStat = 'Mute'
 					self.MuteStat = 1
+				self.Mute_ = QPushButton(QIcon(self.path_), '')
+				#self.Mute_.setMaximumSize(40.0, 40.0)
 				self.Mute_.setToolTip('Status: ' + MuteStat)
 			except alsaaudio.ALSAAudioError, x :
 				# print x, '\n'
