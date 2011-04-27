@@ -9,7 +9,7 @@ try :
 	from PyKDE4.kdeui import *
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
-	import os, alsaaudio, os.path, string, select, time
+	import os, os.path, string, select, time, alsaaudio
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
@@ -125,12 +125,13 @@ class plasmaVolume(plasmascript.Applet):
 
 		global warningMsg
 		if warningMsg != '' :
-			labelMsg = QLabel()
-			Msg = 'Error : ' + str(warningMsg) + '\nPlease, install necessary packet.'
+			self.layout = QGraphicsLinearLayout()
+			labelMsg = Plasma.Label()
+			Msg = 'Error : ' + str(warningMsg) + '.<br>Please, install necessary packet.'
 			labelMsg.setText("<font color=red><b>" + Msg + "</b></font>")
 			labelMsg.setToolTip(Msg)
-			self.Dialog.layout.addWidget(labelMsg,0,0)
-			self.Dialog.setLayout(self.Dialog.layout)
+			self.layout.addItem(labelMsg)
+			self.setLayout(self.layout)
 		else:
 			#self.Timer = QTimer()
 			self.Mutex = QMutex()
@@ -400,20 +401,21 @@ class plasmaVolume(plasmascript.Applet):
 
 	def eventClose(self):
 		x = ''
-		for i in xrange(len(self.listAllDevices)) :
-			try :
-				self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
-				self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
-			except TypeError, x:
-				#print x
-				pass
-			except x :
-				#print x
-				pass
-			finally :
-				pass
+		if 'listAllDevices' in dir(self) :
+			for i in xrange(len(self.listAllDevices)) :
+				try :
+					self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
+					self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
+				except TypeError, x:
+					#print x
+					pass
+				except x :
+					#print x
+					pass
+				finally :
+					pass
 		self.emit(SIGNAL('killThread()'))
-		self.Mutex.unlock()
+		if 'Mutex' in dir(self) : self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
 		#self.close()
 
