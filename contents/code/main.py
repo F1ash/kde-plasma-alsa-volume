@@ -15,6 +15,17 @@ except ImportError, warningMsg :
 finally:
 	'O`key'
 
+def user_or_sys(path_):
+	kdehome = unicode(KGlobal.dirs().localkdedir())
+	var1 = kdehome + 'share/apps/plasma/plasmoids/kde-plasma-alsa-volume/contents/'
+	var2 = '/usr/share/kde4/apps/plasma/plasmoids/kde-plasma-alsa-volume/contents/'
+	if os.path.exists(var2 + path_) :
+		return var2 + path_
+	elif os.path.exists(var1 + path_) :
+		return var1 + path_
+	else :
+		return kdehome
+
 class T(QThread):
 	def __init__(self, obj = None, parent = None):
 		QThread.__init__(self)
@@ -58,12 +69,9 @@ class plasmaVolume(plasmascript.Applet):
 		self.sliderColour2Var = self.initValue('sliderColour2')
 		self.handlerColourVar = self.initValue('handlerColour')
 
-		kdehome = unicode(KGlobal.dirs().localkdedir())
-		# print kdehome
-
-		f = open(kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/style/style_horiz.css")
+		f = open(user_or_sys("style/style_horiz.css"))
 		self.style_horiz = f.read(); f.close()
-		f = open(kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/style/style_vert.css")
+		f = open(user_or_sys("style/style_vert.css"))
 		self.style_vert = f.read(); f.close()
 		sliderColour1 = ColorWidget().getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
 		sliderColour2 = ColorWidget().getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
@@ -104,10 +112,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.connect(self, SIGNAL('refreshByDP()'), self.refreshByDevicePanel)
 		self.connect(self, SIGNAL('finished()'), self.loop, SLOT(self.Flag._terminate()))
 
-
-		self.kdehome = unicode(KGlobal.dirs().localkdedir())
-
-		path_1 = self.kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/sound.png"
+		path_1 = user_or_sys("icons/sound.png")
 		path_ = os.path.expanduser(path_1)
 		path_2 = '/usr/share/icons/sound.png'
 		# print path_
@@ -176,7 +181,7 @@ class plasmaVolume(plasmascript.Applet):
 			self.Scroll = QScrollArea()
 
 			fontStyle = ColorWidget().getRGBaStyle((QString(self.fontColourVar).toUInt()[0], True))
-			iconPath = self.kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/refresh.png"
+			iconPath = user_or_sys("icons/refresh.png")
 			self.rescanDevices = QPushButton(QIcon(iconPath), '')
 			#self.rescanDevices.setStyleSheet(fontStyle)
 			self.rescanDevices.setToolTip('Rescan')
@@ -431,8 +436,7 @@ class AudioOutput():
 		self.mix = mix
 		self.cardIndex = cardIndex
 
-		kdehome = unicode(KGlobal.dirs().localkdedir())
-		self.path_ = kdehome + "share/apps/plasma/plasmoids/plasmaVolume/contents/icons/play.png"
+		self.path_ = user_or_sys("icons/play.png")
 
 		self.mixerID = None
 		for _id in xrange(100) :				## how much?
@@ -546,9 +550,8 @@ class DevicePanel(QWidget):
 		self.Applet = obj
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
-		kdehome = unicode(KGlobal.dirs().localkdedir())
 
-		self.refreshIconPath = kdehome + 'share/apps/plasma/plasmoids/plasmaVolume/contents/icons/refresh.png'
+		self.refreshIconPath = user_or_sys("icons/refresh.png")
 		self.refreshIcon = QIcon(self.refreshIconPath)
 
 		self.layout = QGridLayout()
@@ -629,9 +632,8 @@ class ColorWidget(QWidget):
 		QWidget.__init__(self, parent)
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
-		kdehome = unicode(KGlobal.dirs().localkdedir())
 
-		self.colourIconPath = kdehome + 'share/apps/plasma/plasmoids/plasmaVolume/contents/icons/color.png'
+		self.colourIconPath = user_or_sys('icons/color.png')
 		self.colourIcon = QIcon(self.colourIconPath)
 
 		self.fontColourVar = self.initValue('fontColour')

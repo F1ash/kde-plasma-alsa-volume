@@ -1,16 +1,16 @@
 [Desktop Entry]
 Encoding=UTF-8
-Name=plasmaVolume
+Name=ALSA Volume Control
 Type=Service
 ServiceTypes=Plasma/Applet
-Icon=contents/icons/sound.png
+Icon=/usr/share/kde4/apps/plasma/plasmoids/kde-plasma-alsa-volume/contents/icons/sound.png
 X-Plasma-API=python
 X-Plasma-MainScript=code/main.py
 X-KDE-PluginInfo-Author=Fl@sh
 X-KDE-PluginInfo-Email=no@mail.me
-X-KDE-PluginInfo-Name=plasmaVolume
-X-KDE-PluginInfo-Version=0.37
-X-KDE-PluginInfo-Website=http://plasma.kde.org/
+X-KDE-PluginInfo-Name=kde-plasma-alsa-volume
+X-KDE-PluginInfo-Version=0.38
+X-KDE-PluginInfo-Website=https://github.com/F1ash/plasmaVolume
 X-KDE-PluginInfo-Category=Multimedia
 X-KDE-PluginInfo-Depends=
 X-KDE-PluginInfo-License=GPL
