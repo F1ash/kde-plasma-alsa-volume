@@ -3,6 +3,9 @@ INSTALL=install -D -m 0644 -p
 APP_NAME=kde-plasma-alsa-volume
 PLASMA=plasma/plasmoids
 
+build:
+	@echo "Nothing to build"
+
 install: build
 	$(INSTALL) metadata.desktop $(DESTDIR)/share/kde4/services/$(APP_NAME).desktop
 	$(INSTALL) contents/code/main.py $(DESTDIR)/share/kde4/apps/$(PLASMA)/$(APP_NAME)/code/main.py
