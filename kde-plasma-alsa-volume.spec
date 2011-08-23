@@ -23,12 +23,11 @@ kde-plasma-alsa-volume
 %prep
 %setup -q
 
+%build
+make %{?_smp_mflags}
+
 %install
-rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/%{_datadir}/kde4/apps/plasma/plasmoids/%{name}
-cp -r * $RPM_BUILD_ROOT/%{_datadir}/kde4/apps/plasma/plasmoids/%{name}/
-mkdir -p $RPM_BUILD_ROOT/%{_datadir}/kde4/services
-cp -r metadata.desktop $RPM_BUILD_ROOT/%{_datadir}/kde4/services/%{name}.desktop
+make install DESTDIR=$RPM_BUILD_ROOT/usr
 
 %files
 %defattr(-,root,root)
