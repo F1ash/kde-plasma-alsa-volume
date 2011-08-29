@@ -13,6 +13,7 @@ build:
 
 install: build
 	$(INSTALL) metadata.desktop $(DESTDIR)/$(KSERV)/$(APP_NAME).desktop
+	$(INSTALL) metadata.desktop $(DESTDIR)/$(KAPPS)/$(PLASMA)/$(APP_NAME)/$(CODE)/metadata.desktop
 	$(INSTALL) $(CODE)/main.py $(DESTDIR)/$(KAPPS)/$(PLASMA)/$(APP_NAME)/$(CODE)/main.py
 	$(INSTALL) $(STYLE)/style.css $(DESTDIR)/$(KAPPS)/$(PLASMA)/$(APP_NAME)/$(STYLE)/style.css
 	$(INSTALL) $(STYLE)/style_horiz.css $(DESTDIR)/$(KAPPS)/$(PLASMA)/$(APP_NAME)/$(STYLE)/style_horiz.css
