@@ -1,6 +1,6 @@
 Name: kde-plasma-alsa-volume
 Version: 0.38.1
-Release: 3%{?dist}
+Release: 4%{?dist}
 Summary: ALSA Volume Control plasmoid.
 Summary(ru): Плазмоид для управления ALSA устройствами.
 Group: Applications/Multimedia
@@ -10,7 +10,7 @@ BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 URL: https://github.com/F1ash/plasmaVolume
 BuildArch: noarch
 
-Requires: python, PyQt4, PyKDE4
+Requires: python, PyQt4, PyKDE4, python-alsaaudio
 
 %description
 kde-plasma-alsa-volume
@@ -39,6 +39,9 @@ make install DESTDIR=$RPM_BUILD_ROOT/usr
 rm -rf $RPM_BUILD_ROOT
 
 %changelog
+
+* Tue Sep 27 2011 <kaperang07@gmail.com> - 0.38.1-4
+- added python-alsaaudio requires in spec
 
 * Mon Aug 29 2011 Fl@sh <kaperang07@gmail.com> - 0.38.1-3
 - fixed Makefile
