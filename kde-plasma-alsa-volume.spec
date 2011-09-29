@@ -1,6 +1,6 @@
 Name: kde-plasma-alsa-volume
-Version: 0.38.1
-Release: 4%{?dist}
+Version: 0.38.2
+Release: 5%{?dist}
 Summary: ALSA Volume Control plasmoid.
 Summary(ru): Плазмоид для управления ALSA устройствами.
 Group: Applications/Multimedia
@@ -40,7 +40,10 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 
-* Tue Sep 27 2011 <kaperang07@gmail.com> - 0.38.1-4
+* Thu Sep 29 2011 Fl@sh <kaperang07@gmail.com> - 0.38.2-5
+- selected stable method of wait thread run
+
+* Tue Sep 27 2011 Fl@sh <kaperang07@gmail.com> - 0.38.1-5
 - added python-alsaaudio requires in spec
 
 * Mon Aug 29 2011 Fl@sh <kaperang07@gmail.com> - 0.38.1-3

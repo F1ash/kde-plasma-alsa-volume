@@ -138,7 +138,7 @@ class plasmaVolume(plasmascript.Applet):
 			self.layout.addItem(labelMsg)
 			self.setLayout(self.layout)
 		else:
-			#self.Timer = QTimer()
+			self.Timer = QTimer()
 			self.Mutex = QMutex()
 			self.initContent()
 			self.showPanelDevices()
@@ -343,8 +343,8 @@ class plasmaVolume(plasmascript.Applet):
 
 		self.setLayout(self.layout)
 
-		#self.Timer.singleShot(2000, self.startWaitingVolumeChange)
-		QApplication.postEvent(self, QEvent(QEvent.User))
+		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
+		#QApplication.postEvent(self, QEvent(QEvent.User))
 
 	def customEvent(self, event):
 		if event.type() == QEvent.User :
