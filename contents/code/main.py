@@ -1,4 +1,25 @@
 # -*- coding: utf-8 -*-
+#  main.py
+#  
+#  Copyright 2012 Flash <kaperang07@gmail.com>
+#  
+#  This program is free software; you can redistribute it and/or modify
+#  it under the terms of the GNU General Public License as published by
+#  the Free Software Foundation; either version 2 of the License, or
+#  (at your option) any later version.
+#  
+#  This program is distributed in the hope that it will be useful,
+#  but WITHOUT ANY WARRANTY; without even the implied warranty of
+#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#  GNU General Public License for more details.
+#  
+#  You should have received a copy of the GNU General Public License
+#  along with this program; if not, write to the Free Software
+#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+#  MA 02110-1301, USA.
+#  
+#
+
 try :
 	global warningMsg
 	warningMsg = ''
@@ -9,22 +30,12 @@ try :
 	from PyKDE4.kdeui import *
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
+	from Style import STYLE_HORYZ, STYLE_VERT
 	import os, os.path, string, select, time, alsaaudio
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
 	'O`key'
-
-def user_or_sys(path_):
-	kdehome = unicode(KGlobal.dirs().localkdedir())
-	var1 = kdehome + 'share/apps/plasma/plasmoids/kde-plasma-alsa-volume/contents/'
-	var2 = '/usr/share/kde4/apps/plasma/plasmoids/kde-plasma-alsa-volume/contents/'
-	if os.path.exists(var2 + path_) :
-		return var2 + path_
-	elif os.path.exists(var1 + path_) :
-		return var1 + path_
-	else :
-		return kdehome
 
 class T(QThread):
 	def __init__(self, obj = None, parent = None):
@@ -69,10 +80,8 @@ class plasmaVolume(plasmascript.Applet):
 		self.sliderColour2Var = self.initValue('sliderColour2')
 		self.handlerColourVar = self.initValue('handlerColour')
 
-		f = open(user_or_sys("style/style_horiz.css"))
-		self.style_horiz = f.read(); f.close()
-		f = open(user_or_sys("style/style_vert.css"))
-		self.style_vert = f.read(); f.close()
+		self.style_horiz = STYLE_HORYZ
+		self.style_vert = STYLE_VERT
 		sliderColour1 = ColorWidget().getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
 		sliderColour2 = ColorWidget().getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
 		handlerColour = ColorWidget().getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
@@ -97,6 +106,7 @@ class plasmaVolume(plasmascript.Applet):
 			return default
 
 	def init(self):
+		self.setImmutability(Plasma.Mutable)
 		self.Flag = T(obj = self)
 		self.setHasConfigurationInterface(True)
 		self.loop = QEventLoop()
@@ -112,14 +122,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.connect(self, SIGNAL('refreshByDP()'), self.refreshByDevicePanel)
 		self.connect(self, SIGNAL('finished()'), self.loop, SLOT(self.Flag._terminate()))
 
-		path_1 = user_or_sys("icons/sound.png")
-		path_ = os.path.expanduser(path_1)
-		path_2 = '/usr/share/icons/sound.png'
-		# print path_
-		if os.path.exists(path_):
-			self.path_ = path_
-		else:
-			self.path_ = path_2
 		self.initIcon()
 
 		self.Dialog = Plasma.Dialog()
@@ -155,7 +157,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.layoutSliders.setSpacing(0)
 
 		self.icon = Plasma.IconWidget()
-		self.icon.setIcon(self.path_)
+		self.icon.setIcon(QIcon().fromTheme('preferences-desktop-sound'))
 		self.icon.setToolTip('ALSA Volume Control')
 		self.connect(self.icon, SIGNAL('clicked()'), self.showSliders)
 		self.icon.setMaximumSize(40.0, 40.0)
@@ -181,8 +183,8 @@ class plasmaVolume(plasmascript.Applet):
 			self.Scroll = QScrollArea()
 
 			fontStyle = ColorWidget().getRGBaStyle((QString(self.fontColourVar).toUInt()[0], True))
-			iconPath = user_or_sys("icons/refresh.png")
-			self.rescanDevices = QPushButton(QIcon(iconPath), '')
+			iconPath = QIcon().fromTheme('view-refresh')
+			self.rescanDevices = QPushButton(iconPath, '')
 			#self.rescanDevices.setStyleSheet(fontStyle)
 			self.rescanDevices.setToolTip('Rescan')
 			self.rescanDevices.clicked.connect(self.rescan)
@@ -201,7 +203,7 @@ class plasmaVolume(plasmascript.Applet):
 		for card in xrange(100) :
 			try:
 				if alsaaudio.mixers(card) :
-					cardIndexList += [card]
+					cardIndexList.append(card)
 					#print card, alsaaudio.mixers(card), cardList[i]; i += 1
 			except alsaaudio.ALSAAudioError :
 				#print card, ' error'
@@ -209,20 +211,19 @@ class plasmaVolume(plasmascript.Applet):
 		i = 0
 		for card in cardIndexList :
 			for audioDevice in alsaaudio.mixers(card) :
-				self.listAllDevices += [ (audioDevice, card, cardList[i]) ]
+				self.listAllDevices.append((audioDevice, card, cardList[i]))
 			i += 1
-		#print listAllDevices
+		#print self.listAllDevices
 		i = 0
 		for audioDevice in self.listAllDevices :
 			name = str(audioDevice[0])
 			cardIndex = audioDevice[1]
 			card = audioDevice[2]
 			#print name, cardIndex, card
-			self.ao += [name]
-			self.ao[i] = AudioOutput(name, self, i, cardIndex)
-			if not ( self.ao[i].capability in [ [], [''] ] ) :
+			self.ao.append(AudioOutput(name, self, i, cardIndex))
+			if not ( self.ao[i].capability in ([], ['']) ) :
 
-				self.sliderHandle += [name]
+				self.sliderHandle.append(name)
 				self.sliderHandle[i] = QSlider(Qt.Horizontal)
 				self.sliderHandle[i].setTickPosition(2)
 				self.sliderHandle[i].name = name + ' \\ ' + card
@@ -230,7 +231,7 @@ class plasmaVolume(plasmascript.Applet):
 				self.Dialog.layout.addWidget(self.sliderHandle[i],i+1,5)
 				self.sliderHandle[i].valueChanged.connect(self.ao[i].setVolume)
 
-				self.label += [name]
+				self.label.append(name)
 				self.label[i] = QLabel('<b><i>' + name + ' \\ ' + card + '</i></b>')
 				self.label[i].setStyleSheet(fontStyle)
 				self.label[i].setToolTip(name)
@@ -319,7 +320,7 @@ class plasmaVolume(plasmascript.Applet):
 				if sliderName in self.panelDevices:    ## ["Master","PCM","Front","Line"]:
 					if self.ao[i].capability != [] :
 						# print sliderName,'--'
-						self.sliderHPlasma += [sliderName]
+						self.sliderHPlasma.append(sliderName)
 						self.sliderHPlasma[i] = Plasma.Slider()
 						self.sliderHPlasma[i].setOrientation(oriental_)
 						self.sliderHPlasma[i].setToolTip(sliderName)
@@ -409,16 +410,21 @@ class plasmaVolume(plasmascript.Applet):
 		if 'listAllDevices' in dir(self) :
 			for i in xrange(len(self.listAllDevices)) :
 				try :
-					self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
-					self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
+					if self.ao[i].capability != [] :
+						muteStat = self.ao[i].MuteStat if hasattr(self.ao[i], 'MuteStat') else -1
+						#print self.ao[i].mix, self.ao[i].capability, self.ao[i].oldValue, muteStat
+						data = QStringList()<< str(self.ao[i].oldValue[0]) << str(muteStat)
+						self.config().writeEntry(self.ao[i].mix, data)
+						self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
+						self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
 				except TypeError, x:
 					#print x
 					pass
 				except x :
 					#print x
 					pass
-				finally :
-					pass
+				finally : pass
+		self.config().sync()
 		self.emit(SIGNAL('killThread()'))
 		if 'Mutex' in dir(self) : self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
@@ -436,7 +442,8 @@ class AudioOutput():
 		self.mix = mix
 		self.cardIndex = cardIndex
 
-		self.path_ = user_or_sys("icons/play.png")
+		self.playIcon = QIcon().fromTheme('kt-start')
+		self.muteIcon = QIcon().fromTheme('kt-stop')
 
 		self.mixerID = None
 		for _id in xrange(100) :				## how much?
@@ -449,7 +456,7 @@ class AudioOutput():
 			self.mixerID = _id
 			break
 
-		# print self.Mixer.mixer()
+		#print self.Mixer.mixer(), self.mix
 		if self.mixerID is not None :
 			self.capability = self.Mixer.volumecap()
 			self.oldValue = self.Mixer.getvolume()
@@ -462,10 +469,11 @@ class AudioOutput():
 				if Mute == 0:
 					MuteStat = 'Active'
 					self.MuteStat = 0
+					self.Mute_ = QPushButton(self.muteIcon, '')
 				else:
 					MuteStat = 'Mute'
 					self.MuteStat = 1
-				self.Mute_ = QPushButton(QIcon(self.path_), '')
+					self.Mute_ = QPushButton(self.playIcon, '')
 				#self.Mute_.setMaximumSize(40.0, 40.0)
 				self.Mute_.setToolTip('Status: ' + MuteStat)
 			except alsaaudio.ALSAAudioError, x :
@@ -475,6 +483,11 @@ class AudioOutput():
 				pass
 		else :
 			self.capability = []
+		if self.Parent.config().hasKey(self.mix) :
+			data_ = self.Parent.config().readEntry(self.mix).split(',')
+			#print '%s :: %s, %s' % (self.mix, data_.takeFirst(), data_.takeLast())
+			self.setMute(data_.takeLast().toInt()[0])
+			self.setVolume(data_.takeFirst().toInt()[0])
 
 	def setVolume_timeout(self):
 		vol_ = alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getvolume()
@@ -484,14 +497,19 @@ class AudioOutput():
 		Mute = 0
 		for i in self.Mixer.getmute():
 			Mute += int(i)
+		self.setMute(Mute)
+
+	def setMute(self, Mute):
 		if 0 < Mute:
 			self.Mixer.setmute(0)
 			MuteStat = 'Active'
 			self.MuteStat = 0
+			self.Mute_.setIcon(self.muteIcon)
 		else:
 			self.Mixer.setmute(1)
 			MuteStat = 'Mute'
 			self.MuteStat = 1
+			self.Mute_.setIcon(self.playIcon)
 		self.Mute_.setToolTip('Status: ' + MuteStat)
 
 	def setMuted_timeout(self):
@@ -503,10 +521,12 @@ class AudioOutput():
 				self.Mixer.setmute(0)
 				MuteStat = 'Active'
 				self.MuteStat = 0
+				self.Mute_.setIcon(self.muteIcon)
 			else:
 				self.Mixer.setmute(1)
 				MuteStat = 'Mute'
 				self.MuteStat = 1
+				self.Mute_.setIcon(self.playIcon)
 			self.Mute_.setToolTip('Status: ' + MuteStat)
 
 	def setVolume(self, vol_):
@@ -551,8 +571,7 @@ class DevicePanel(QWidget):
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 
-		self.refreshIconPath = user_or_sys("icons/refresh.png")
-		self.refreshIcon = QIcon(self.refreshIconPath)
+		self.refreshIcon = QIcon().fromTheme('view-refresh')  #QIcon(self.refreshIconPath)
 
 		self.layout = QGridLayout()
 
@@ -633,8 +652,7 @@ class ColorWidget(QWidget):
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 
-		self.colourIconPath = user_or_sys('icons/color.png')
-		self.colourIcon = QIcon(self.colourIconPath)
+		self.colourIcon = QIcon().fromTheme('color')
 
 		self.fontColourVar = self.initValue('fontColour')
 		self.sliderColour1Var = self.initValue('sliderColour1')
