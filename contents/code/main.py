@@ -339,11 +339,11 @@ class plasmaVolume(plasmascript.Applet):
 							self.layoutSliders.addItem(self.sliderHPlasma[i], i, 0)
 						self.sliderHPlasma[i].valueChanged.connect(self.ao[i].setVolume)
 					else:
-						self.sliderHPlasma += ['']
+						self.sliderHPlasma.append('')
 				else:
-					self.sliderHPlasma += ['']
+					self.sliderHPlasma.append('')
 			else:
-				self.sliderHPlasma += ['']
+				self.sliderHPlasma.append('')
 			i += 1
 
 		self.layout.addItem(self.layoutSliders)
@@ -521,7 +521,7 @@ class AudioOutput():
 			m, state = data_.takeLast().toInt()
 			if state and m>=0 : self.setMute(m)
 			v, state = data_.takeFirst().toInt()
-			if state and v>=0 : self.setMixerVolume(v)
+			if state and v>=0 : self.setVolume(v)
 			#print 'Init: %s\n\t\tvolume(%s),\tmute(%s)' % (self.mix, v, m)
 
 	def setVolume_timeout(self):
@@ -553,17 +553,16 @@ class AudioOutput():
 			Mute += int(i)
 		if self.MuteStat != Mute : self.setMute(Mute)
 
-	def setMixerVolume(self, vol_):
+	def setVolume(self, vol_):
 		i = 0
 		for channal in self.oldValue:
 			self.oldValue[i] = vol_
 			self.Mixer.setvolume(vol_, i)
 			i += 1
-
-	def setVolume(self, vol_):
-		self.setMixerVolume(vol_)
-		self.setCurrentValue(self.Parent.sliderHandle[self.id_])
-		if (type(self.Parent.sliderHPlasma[self.id_]) is not str):
+		if len(self.Parent.sliderHandle)-1 >= self.id_ :
+			self.setCurrentValue(self.Parent.sliderHandle[self.id_])
+		if (type(self.Parent.sliderHPlasma[self.id_]) is not str) \
+			and len(self.Parent.sliderHPlasma)-1 >= self.id_ :
 			self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], True)
 
 	def setCurrentValue(self, obj, panel = False):
