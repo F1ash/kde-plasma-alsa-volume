@@ -107,6 +107,11 @@ class plasmaVolume(plasmascript.Applet):
 
 	def init(self):
 		self.setImmutability(Plasma.Mutable)
+		#s = ''
+		#for i in xrange(60) : s += '*'
+		#print s
+		#print 'New init in: ', time.strftime("%Y_%m_%d_%H:%M:%S", time.localtime())
+		#print [str(s) for s in self.config().keyList()], ' ALSA Devices'
 		self.Flag = T(obj = self)
 		self.setHasConfigurationInterface(True)
 		self.loop = QEventLoop()
@@ -179,6 +184,7 @@ class plasmaVolume(plasmascript.Applet):
 			self.Dialog.layout = QGridLayout()
 			if 'Scroll' in dir(self) :
 				del self.Scroll
+			if 'ScrollWidget' in dir(self) :
 				del self.ScrollWidget
 			self.Scroll = QScrollArea()
 
@@ -246,8 +252,8 @@ class plasmaVolume(plasmascript.Applet):
 				self.connect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
 				self.Mutex.unlock()
 			else:
-				self.label += ['']
-				self.sliderHandle += ['']
+				self.label.append('')
+				self.sliderHandle.append('')
 				#print name, cardIndex, card, 'not capability'
 			i += 1
 
@@ -293,7 +299,7 @@ class plasmaVolume(plasmascript.Applet):
 			# if str(self.Settings.value('Vertical::panelOrientation').toString()) == '0':
 			if self.formFactor() == Plasma.Horizontal :
 				self.setMaximumWidth(35)
-			elif self.formFactor() in [Plasma.Planar, Plasma.MediaCenter] :
+			elif self.formFactor() in (Plasma.Planar, Plasma.MediaCenter) :
 				#self.resize(35,35)
 				#self.setMaximumSize(100.0,100.0)
 				pass
@@ -304,7 +310,7 @@ class plasmaVolume(plasmascript.Applet):
 			# if str(self.Settings.value('Vertical::panelOrientation').toString()) == '1':
 			if self.formFactor() == Plasma.Vertical :
 				self.setMaximumHeight(35)
-			elif self.formFactor() in [Plasma.Planar, Plasma.MediaCenter] :
+			elif self.formFactor() in (Plasma.Planar, Plasma.MediaCenter) :
 				#self.resize(35,35)
 				#self.setMaximumSize(100.0,100.0)
 				pass
@@ -354,6 +360,7 @@ class plasmaVolume(plasmascript.Applet):
 	def showSliders(self):
 		if self.ScrollWidget.isVisible():
 			self.ScrollWidget.close()
+			self.writeParameters('in close of sliders:')
 		else:
 			self.ScrollWidget.move(self.popupPosition(self.ScrollWidget.sizeHint()))   ##Dialog
 			self.ScrollWidget.show()
@@ -405,26 +412,43 @@ class plasmaVolume(plasmascript.Applet):
 	def configDenied(self):
 		pass
 
+	def writeParameters(self, str_ = ''):
+		if 'listAllDevices' in dir(self) :
+			#print 'Write %s' % str_
+			for i in xrange(len(self.listAllDevices)) :
+				try :
+					if self.ao[i].capability != [] :
+						muteStat = self.ao[i].MuteStat if hasattr(self.ao[i], 'MuteStat') else -1
+						s = (self.ao[i].mix, self.ao[i].capability, self.ao[i].oldValue, muteStat)
+						#print '\t%s\t%s\n\t%s\t%s' % s
+						data = QStringList() << str(self.ao[i].oldValue[0]) << str(muteStat)
+						self.config().writeEntry(self.ao[i].mix, data)
+				except Exception, x :
+					#print x
+					pass
+				finally : pass
+		self.config().sync()
+		newMailNotify = KNotification.event(KNotification.Notification, \
+						QString('<b>ALSA Volume Control</b>'), \
+						QString('Parameters are saved.'), \
+						QPixmap(), \
+						None, \
+						KNotification.CloseOnTimeout)
+		newMailNotify.sendEvent()
+
 	def eventClose(self):
 		x = ''
 		if 'listAllDevices' in dir(self) :
 			for i in xrange(len(self.listAllDevices)) :
 				try :
 					if self.ao[i].capability != [] :
-						muteStat = self.ao[i].MuteStat if hasattr(self.ao[i], 'MuteStat') else -1
-						#print self.ao[i].mix, self.ao[i].capability, self.ao[i].oldValue, muteStat
-						data = QStringList()<< str(self.ao[i].oldValue[0]) << str(muteStat)
-						self.config().writeEntry(self.ao[i].mix, data)
 						self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
 						self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
-				except TypeError, x:
-					#print x
-					pass
-				except x :
+				except Exception, x :
 					#print x
 					pass
 				finally : pass
-		self.config().sync()
+		self.writeParameters('in close applet:')
 		self.emit(SIGNAL('killThread()'))
 		if 'Mutex' in dir(self) : self.Mutex.unlock()
 		print "plasmaVolume destroyed manually."
@@ -432,6 +456,16 @@ class plasmaVolume(plasmascript.Applet):
 
 	def mouseDoubleClickEvent(self, ev):
 		self.showConfigurationInterface()
+
+	def mousePressEvent(self, ev):
+		if ev.type() == QEvent.GraphicsSceneMousePress :
+			ev.accept()
+	def mouseReleaseEvent(self, ev):
+		if ev.type() == QEvent.GraphicsSceneMouseRelease :
+			#ev.ignore()
+			self.refresh()
+
+	def __del__(self): self.eventClose()
 
 class AudioOutput():
 	def __init__(self, mix = 'Master', parent = None, i = 0, cardIndex = 0):
@@ -451,7 +485,7 @@ class AudioOutput():
 				x = ''
 				self.Mixer = alsaaudio.Mixer(self.mix, _id, cardindex = self.cardIndex)
 			except alsaaudio.ALSAAudioError, x:
-				print x
+				#print x
 				continue
 			self.mixerID = _id
 			break
@@ -462,7 +496,6 @@ class AudioOutput():
 			self.oldValue = self.Mixer.getvolume()
 			# print self.oldValue, self.capability
 			try :
-				self.Mixer.getmute()
 				Mute = 0
 				for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute() :
 					Mute += int(i)
@@ -485,9 +518,11 @@ class AudioOutput():
 			self.capability = []
 		if self.Parent.config().hasKey(self.mix) :
 			data_ = self.Parent.config().readEntry(self.mix).split(',')
-			#print '%s :: %s, %s' % (self.mix, data_.takeFirst(), data_.takeLast())
-			self.setMute(data_.takeLast().toInt()[0])
-			self.setVolume(data_.takeFirst().toInt()[0])
+			m, state = data_.takeLast().toInt()
+			if state and m>=0 : self.setMute(m)
+			v, state = data_.takeFirst().toInt()
+			if state and v>=0 : self.setMixerVolume(v)
+			#print 'Init: %s\n\t\tvolume(%s),\tmute(%s)' % (self.mix, v, m)
 
 	def setVolume_timeout(self):
 		vol_ = alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getvolume()
@@ -497,44 +532,36 @@ class AudioOutput():
 		Mute = 0
 		for i in self.Mixer.getmute():
 			Mute += int(i)
-		self.setMute(Mute)
+		self.setMute(0 if Mute else 1)
 
 	def setMute(self, Mute):
-		if 0 < Mute:
+		if 0 == Mute:
 			self.Mixer.setmute(0)
 			MuteStat = 'Active'
 			self.MuteStat = 0
 			self.Mute_.setIcon(self.muteIcon)
-		else:
+		elif Mute > 0 :
 			self.Mixer.setmute(1)
 			MuteStat = 'Mute'
 			self.MuteStat = 1
 			self.Mute_.setIcon(self.playIcon)
-		self.Mute_.setToolTip('Status: ' + MuteStat)
+		if Mute >= 0 : self.Mute_.setToolTip('Status: ' + MuteStat)
 
 	def setMuted_timeout(self):
 		Mute = 0
 		for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute():
 			Mute += int(i)
-		if self.MuteStat != Mute:
-			if Mute == 0:
-				self.Mixer.setmute(0)
-				MuteStat = 'Active'
-				self.MuteStat = 0
-				self.Mute_.setIcon(self.muteIcon)
-			else:
-				self.Mixer.setmute(1)
-				MuteStat = 'Mute'
-				self.MuteStat = 1
-				self.Mute_.setIcon(self.playIcon)
-			self.Mute_.setToolTip('Status: ' + MuteStat)
+		if self.MuteStat != Mute : self.setMute(Mute)
 
-	def setVolume(self, vol_):
+	def setMixerVolume(self, vol_):
 		i = 0
 		for channal in self.oldValue:
 			self.oldValue[i] = vol_
 			self.Mixer.setvolume(vol_, i)
 			i += 1
+
+	def setVolume(self, vol_):
+		self.setMixerVolume(vol_)
 		self.setCurrentValue(self.Parent.sliderHandle[self.id_])
 		if (type(self.Parent.sliderHPlasma[self.id_]) is not str):
 			self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], True)
@@ -571,7 +598,7 @@ class DevicePanel(QWidget):
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 
-		self.refreshIcon = QIcon().fromTheme('view-refresh')  #QIcon(self.refreshIconPath)
+		self.refreshIcon = QIcon().fromTheme('view-refresh')
 
 		self.layout = QGridLayout()
 
