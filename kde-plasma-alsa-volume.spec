@@ -10,6 +10,7 @@ URL: https://github.com/F1ash/plasmaVolume
 BuildArch: noarch
 
 Requires: PyKDE4, python-alsaaudio
+BuildRequires: kde-filesystem
 
 %description
 kde-plasma-alsa-volume
@@ -29,17 +30,15 @@ make %{?_smp_mflags}
 make install DESTDIR=$RPM_BUILD_ROOT/usr
 
 %files
-%defattr(-,root,root)
-%{_datadir}/kde4/services/%{name}.desktop
-%{_datadir}/kde4/apps/plasma/plasmoids/%{name}/*
-%dir %{_datadir}/kde4/apps/plasma/plasmoids/%{name}
+%{_kde4_datadir}/kde4/services/%{name}.desktop
+%{_kde4_appsdir}/plasma/plasmoids/%{name}
 %doc README COPYING
 
 %changelog
 
 * Wed Dec 06 2012 Fl@sh <kaperang07@gmail.com> - 0.41.2-1
 - version update
-- added docs-files
+- added docs-files & fixed files path
 
 * Thu Sep 29 2011 Fl@sh <kaperang07@gmail.com> - 0.38.2-5
 - selected stable method of wait thread run
