@@ -229,8 +229,7 @@ class plasmaVolume(plasmascript.Applet):
 			self.ao.append(AudioOutput(name, self, i, cardIndex))
 			if not ( self.ao[i].capability in ([], ['']) ) :
 
-				self.sliderHandle.append(name)
-				self.sliderHandle[i] = QSlider(Qt.Horizontal)
+				self.sliderHandle.append(QSlider(Qt.Horizontal))
 				self.sliderHandle[i].setTickPosition(2)
 				self.sliderHandle[i].name = name + ' \\ ' + card
 				self.ao[i].setCurrentValue(self.sliderHandle[i])
@@ -326,12 +325,13 @@ class plasmaVolume(plasmascript.Applet):
 				if sliderName in self.panelDevices:    ## ["Master","PCM","Front","Line"]:
 					if self.ao[i].capability != [] :
 						# print sliderName,'--'
-						self.sliderHPlasma.append(sliderName)
-						self.sliderHPlasma[i] = Plasma.Slider()
+						self.sliderHPlasma.append(Plasma.Slider())
 						self.sliderHPlasma[i].setOrientation(oriental_)
 						self.sliderHPlasma[i].setToolTip(sliderName)
 						self.sliderHPlasma[i].name = sliderName
 						self.sliderHPlasma[i].setStyleSheet(style_)
+						self.sliderHPlasma[i].mouseDoubleClickEvent = self.mouseDoubleClickEvent
+						self.sliderHPlasma[i].mouseReleaseEvent = self.mouseReleaseEvent
 						self.ao[i].setCurrentValue(self.sliderHPlasma[i])
 						if oriental_ == Qt.Vertical:
 							self.layoutSliders.addItem(self.sliderHPlasma[i], 0, i)
