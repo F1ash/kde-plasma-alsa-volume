@@ -1,0 +1,34 @@
+
+v.0.25
+* fixed audiodevice detecting error;
+* added detecting multiple audiodevices in system;
+* added color managment of font and panel sliders with support opacity;
+* added device rescan without restart plasmoid;
+* added plasmatooltip with representation
+device volume in panel;
+
+v.0.27
+* added Rescan button to Panel Devices Settings;
+* added color control for slider handlers;
+
+v.0.28
+* fixed cardindex detection;
+
+v.0.30
+* improved stop control of tracking thread;
+* added detect system color of text for first start;
+
+v.0.35
+* changed method of thread complete;
+
+v.036
+* text is replaced by icons in Common Device Panel;
+
+v.0.37
+* fixed warning in import module errors;
+
+v.0.41.2 :
+* added restore of device volume;
+* added retrieve restored volume parameters;
+* fixed slider`s mouseRelease & doubleClick events for common events;
+* some fixes & improvements;
