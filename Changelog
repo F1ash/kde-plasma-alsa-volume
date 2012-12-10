@@ -31,4 +31,5 @@ v.0.41.2 :
 * added restore of device volume;
 * added retrieve restored volume parameters;
 * fixed slider`s mouseRelease & doubleClick events for common events;
+* fixed the freez at plasmoid's init;
 * some fixes & improvements;
