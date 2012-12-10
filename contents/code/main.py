@@ -559,11 +559,11 @@ class AudioOutput():
 			self.oldValue[i] = vol_
 			self.Mixer.setvolume(vol_, i)
 			i += 1
-		if len(self.Parent.sliderHandle)-1 >= self.id_ :
+		if hasattr(self.Parent, 'sliderHandle') and len(self.Parent.sliderHandle)-1 >= self.id_ :
 			self.setCurrentValue(self.Parent.sliderHandle[self.id_])
-		if (type(self.Parent.sliderHPlasma[self.id_]) is not str) \
-			and len(self.Parent.sliderHPlasma)-1 >= self.id_ :
-			self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], True)
+		if hasattr(self.Parent, 'sliderHPlasma') and len(self.Parent.sliderHPlasma)-1 >= self.id_ :
+			if (type(self.Parent.sliderHPlasma[self.id_]) is not str) :
+				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], True)
 
 	def setCurrentValue(self, obj, panel = False):
 		vol_ = int(min(self.oldValue))
