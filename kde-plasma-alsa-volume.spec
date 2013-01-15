@@ -15,10 +15,16 @@ BuildRequires: kde-filesystem
 %description
 kde-plasma-alsa-volume
 ALSA Volume Control plasmoid.
+This plasmoid is very convenient, because it allows to each device
+be reflected on the panel (or workspace) for control.
+It can to detect the multiple audiodevices (audiocards) in system.
 
 %description -l ru
 kde-plasma-alsa-volume
 Плазмоид для управления ALSA устройствами.
+Позволяет отражать для управления каждое устройство в панели
+или рабочем пространстве. Может определять несколько аудио-карт
+в системе.
 
 %prep
 %setup -q
