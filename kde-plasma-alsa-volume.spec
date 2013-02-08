@@ -6,21 +6,21 @@ Summary(ru): Плазмоид для управления ALSA устройст�
 Group: Applications/Multimedia
 License: GPLv2+
 Source0: https://github.com/F1ash/%{name}/archive/%{name}-%{version}.tar.gz
-URL: https://github.com/F1ash/plasmaVolume
+URL: https://github.com/F1ash/%{name}
 BuildArch: noarch
 
 Requires: PyKDE4, python-alsaaudio
 BuildRequires: kde-filesystem
 
 %description
-kde-plasma-alsa-volume
+%{name}
 ALSA Volume Control plasmoid.
 This plasmoid is very convenient, because it allows to each device
 be reflected on the panel (or workspace) for control.
 It can to detect the multiple audiodevices (audiocards) in system.
 
 %description -l ru
-kde-plasma-alsa-volume
+%{name}
 Плазмоид для управления ALSA устройствами.
 Позволяет отражать для управления каждое устройство в панели
 или рабочем пространстве. Может определять несколько аудио-карт
