@@ -162,7 +162,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.setLayout(self.layout)
 
 	def initIcon(self):
-		self.layout = QGraphicsLinearLayout()
+		self.layout = QGraphicsLinearLayout(self.applet)
 		self.layout.setContentsMargins(1, 1, 1, 1)
 		self.layout.setSpacing(0)
 		self.layout.setMinimumSize(10.0, 10.0)
