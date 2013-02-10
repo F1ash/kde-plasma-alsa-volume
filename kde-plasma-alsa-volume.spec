@@ -3,14 +3,13 @@ Version: 0.41.2
 Release: 1%{?dist}
 Summary: ALSA Volume Control plasmoid
 Summary(ru): Плазмоид для управления ALSA устройствами
-Group: Applications/Multimedia
 License: GPLv2+
 Source0: https://github.com/F1ash/%{name}/archive/%{name}-%{version}.tar.gz
 URL: https://github.com/F1ash/%{name}
 BuildArch: noarch
 
-Requires: PyKDE4, python-alsaaudio
-BuildRequires: kde-filesystem
+Requires: python-alsaaudio
+BuildRequires: kde-settings
 
 %description
 %{name}
@@ -30,6 +29,9 @@ It can to detect the multiple audiodevices (audiocards) in system.
 %setup -q
 
 %build
+if [ -x %{_bindir}/plasma-dataengine-depextractor ] ; then
+  plasma-dataengine-depextractor .
+fi
 make %{?_smp_mflags}
 
 %install
@@ -45,6 +47,7 @@ make install DESTDIR=$RPM_BUILD_ROOT/usr
 * Wed Dec 06 2012 Fl@sh <kaperang07@gmail.com> - 0.41.2-1
 - version update
 - added docs-files & fixed files path
+- added plasma-dataengine-depextractor
 
 * Thu Sep 29 2011 Fl@sh <kaperang07@gmail.com> - 0.38.2-5
 - selected stable method of wait thread run

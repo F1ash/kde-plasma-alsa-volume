@@ -23,7 +23,6 @@
 try :
 	global warningMsg
 	warningMsg = ''
-	from PyKDE4.phonon import *
 	from PyQt4.QtCore import *
 	from PyQt4.QtGui import *
 	from PyKDE4.kdecore import *
@@ -31,46 +30,59 @@ try :
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
 	from Style import STYLE_HORYZ, STYLE_VERT
-	import os, os.path, string, select, time, alsaaudio
+	import os.path, string, select, time, alsaaudio
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
 	'O`key'
 
 class T(QThread):
-	def __init__(self, obj = None, parent = None):
+	def __init__(self, parent = None):
 		QThread.__init__(self)
 
-		self.Parent = obj
+		self.Parent = parent
+		self.Key = True
+		self.pollingObj = None
+		self.fds = None
 		self.setTerminationEnabled(True)
 
 	def run(self):
-		while True :
+		while self.Key :
 			x = ''
 			try:
 				eventDevice = alsaaudio.Mixer()
-				fds = eventDevice.polldescriptors()
-				pollingObj = select.poll()
-				pollingObj.register(fds[0][0],fds[0][1])
-				pollingObj.poll()
-				self.Parent.emit(SIGNAL('changed()'))
-			except ALSAAudioError, x:
-				print x
-			except select.error, x:
-				print x
+				self.fds = eventDevice.polldescriptors()
+				self.pollingObj = select.poll()
+				self.pollingObj.register(self.fds[0][0], self.fds[0][1])
+				self.pollingObj.poll()
+				if self.Key : self.Parent.emit(SIGNAL('changed()'))
 			except Exception, x:
 				print x
-			except x :
-				print x
 			finally :
-				pass
-
+				self.closePolling()
 		return
 
+	def stop(self):
+		self.Key = False
+		self.closePolling()
+
+	def closePolling(self):
+		if self.fds :
+			self.pollingObj.unregister(self.fds[0][0])
+		del self.pollingObj
+		del self.fds
+		self.pollingObj = None
+		self.fds = None
+
 	def _terminate(self):
-		self.quit()
+		self.stop()
+		self.Parent.closeApplet.emit()
 
 class plasmaVolume(plasmascript.Applet):
+	closeApplet = pyqtSignal()
+	killThread  = pyqtSignal()
+	refresh     = pyqtSignal()
+	refreshByDP = pyqtSignal()
 	def __init__(self,parent,args=None):
 		plasmascript.Applet.__init__(self,parent)
 
@@ -112,20 +124,18 @@ class plasmaVolume(plasmascript.Applet):
 		#print s
 		#print 'New init in: ', time.strftime("%Y_%m_%d_%H:%M:%S", time.localtime())
 		#print [str(s) for s in self.config().keyList()], ' ALSA Devices'
-		self.Flag = T(obj = self)
+		self.Flag = T(self)
 		self.setHasConfigurationInterface(True)
-		self.loop = QEventLoop()
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 		self.initColor()
 		self.panelDevices = string.split(str((self.Settings.value('PanelDevices')).toString()),',')
 
-		self.connect(self.applet, SIGNAL('destroyed()'), self.eventClose)
-		self.connect(self, SIGNAL('destroyed()'), self.eventClose)
-		self.connect(self, SIGNAL('killThread()'), self.stopWaitingVolumeChange)
-		self.connect(self, SIGNAL('refresh()'), self.refresh)
-		self.connect(self, SIGNAL('refreshByDP()'), self.refreshByDevicePanel)
-		self.connect(self, SIGNAL('finished()'), self.loop, SLOT(self.Flag._terminate()))
+		self.connect(self.applet, SIGNAL('destroyed()'), self.down)
+		self.closeApplet.connect(self._close)
+		self.killThread.connect(self.stopWaitingVolumeChange)
+		self.refresh.connect(self.refreshData)
+		self.refreshByDP.connect(self.refreshByDevicePanel)
 
 		self.initIcon()
 
@@ -146,14 +156,13 @@ class plasmaVolume(plasmascript.Applet):
 			self.setLayout(self.layout)
 		else:
 			self.Timer = QTimer()
-			self.Mutex = QMutex()
 			self.initContent()
 			self.showPanelDevices()
 
 		self.setLayout(self.layout)
 
 	def initIcon(self):
-		self.layout = QGraphicsLinearLayout(self.applet)
+		self.layout = QGraphicsLinearLayout()
 		self.layout.setContentsMargins(1, 1, 1, 1)
 		self.layout.setSpacing(0)
 		self.layout.setMinimumSize(10.0, 10.0)
@@ -171,10 +180,12 @@ class plasmaVolume(plasmascript.Applet):
 
 	def startWaitingVolumeChange(self):
 		if not self.Flag.isRunning() :
+			self.Flag.Key = True
 			self.Flag.start()
 
 	def stopWaitingVolumeChange(self):
-		self.loop.quit()
+		if self.Flag.isRunning() :
+			self.Flag.stop()
 
 	def initContent(self):
 		self.initColor()
@@ -247,9 +258,7 @@ class plasmaVolume(plasmascript.Applet):
 					self.ao[i].Mute_.clicked.connect(self.ao[i].setMuted_)
 					self.connect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
 
-				self.Mutex.lock()
 				self.connect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
-				self.Mutex.unlock()
 			else:
 				self.label.append('')
 				self.sliderHandle.append('')
@@ -351,16 +360,11 @@ class plasmaVolume(plasmascript.Applet):
 		self.setLayout(self.layout)
 
 		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
-		#QApplication.postEvent(self, QEvent(QEvent.User))
-
-	def customEvent(self, event):
-		if event.type() == QEvent.User :
-			self.startWaitingVolumeChange()
 
 	def showSliders(self):
 		if self.ScrollWidget.isVisible():
 			self.ScrollWidget.close()
-			self.writeParameters('in close of sliders:')
+			self.writeParameters()
 		else:
 			self.ScrollWidget.move(self.popupPosition(self.ScrollWidget.sizeHint()))   ##Dialog
 			self.ScrollWidget.show()
@@ -395,26 +399,23 @@ class plasmaVolume(plasmascript.Applet):
 		self.showPanelDevices()
 		self.showConfigurationInterface()
 
-	def refresh(self):
-		self.Mutex.lock()
+	def refreshData(self):
 		self.Settings.sync()
-		self.Mutex.unlock()
 		self.initContent()
 		self.showPanelDevices()
 
 	def configAccepted(self):
-		self.emit(SIGNAL('killThread()'))
+		self.stopWaitingVolumeChange()
 		self.selectDevice.refreshPanelDevices(self)
 		self.interfaceSettings.refreshInterfaceSettings()
 		self.colorSelect.refreshInterfaceSettings()
-		self.emit(SIGNAL('refresh()'))
+		self.refresh.emit()
 
 	def configDenied(self):
 		pass
 
-	def writeParameters(self, str_ = ''):
+	def writeParameters(self):
 		if 'listAllDevices' in dir(self) :
-			#print 'Write %s' % str_
 			for i in xrange(len(self.listAllDevices)) :
 				try :
 					if self.ao[i].capability != [] :
@@ -436,7 +437,8 @@ class plasmaVolume(plasmascript.Applet):
 						KNotification.CloseOnTimeout)
 		newMailNotify.sendEvent()
 
-	def eventClose(self):
+	def down(self):
+		self.disconnect(self.applet, SIGNAL('destroyed()'), self.down)
 		x = ''
 		if 'listAllDevices' in dir(self) :
 			for i in xrange(len(self.listAllDevices)) :
@@ -448,11 +450,8 @@ class plasmaVolume(plasmascript.Applet):
 					#print x
 					pass
 				finally : pass
-		self.writeParameters('in close applet:')
-		self.emit(SIGNAL('killThread()'))
-		if 'Mutex' in dir(self) : self.Mutex.unlock()
-		print "plasmaVolume destroyed manually."
-		#self.close()
+		if self.Flag.isRunning() : self.Flag._terminate()
+		else : self._close()
 
 	def mouseDoubleClickEvent(self, ev):
 		self.showConfigurationInterface()
@@ -463,9 +462,12 @@ class plasmaVolume(plasmascript.Applet):
 	def mouseReleaseEvent(self, ev):
 		if ev.type() == QEvent.GraphicsSceneMouseRelease :
 			#ev.ignore()
-			self.refresh()
+			self.refreshData()
 
-	def __del__(self): self.eventClose()
+	def _close(self):
+		print "plasmaVolume destroyed manually."
+
+	def __del__(self): self.down()
 
 class AudioOutput():
 	def __init__(self, mix = 'Master', parent = None, i = 0, cardIndex = 0):
@@ -624,7 +626,7 @@ class DevicePanel(QWidget):
 
 	def rescan(self):
 		self.Parent.done(0)
-		self.Applet.emit(SIGNAL('refreshByDP()'))
+		self.Applet.refreshByDP.emit()
 
 	def refreshPanelDevices(self, obj):
 		obj.panelDevices = []
