@@ -4,7 +4,7 @@ Release: 1%{?dist}
 Summary: ALSA Volume Control plasmoid
 Summary(ru): Плазмоид для управления ALSA устройствами
 License: GPLv2+
-Source0: https://github.com/F1ash/%{name}/archive/%{name}-%{version}.tar.gz
+Source0: https://github.com/F1ash/%{name}/archive/%{version}.tar.gz
 URL: https://github.com/F1ash/%{name}
 BuildArch: noarch
 
