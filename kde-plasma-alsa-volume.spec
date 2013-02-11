@@ -9,7 +9,7 @@ URL: https://github.com/F1ash/%{name}
 BuildArch: noarch
 
 Requires: python-alsaaudio
-BuildRequires: kde-settings
+BuildRequires: kdelibs4-devel
 
 %description
 %{name}
@@ -47,7 +47,7 @@ make install DESTDIR=$RPM_BUILD_ROOT/usr
 * Wed Dec 06 2012 Fl@sh <kaperang07@gmail.com> - 0.41.2-1
 - version update
 - added docs-files & fixed files path
-- added plasma-dataengine-depextractor
+- added plasma-dataengine-depextractor approach
 
 * Thu Sep 29 2011 Fl@sh <kaperang07@gmail.com> - 0.38.2-5
 - selected stable method of wait thread run
