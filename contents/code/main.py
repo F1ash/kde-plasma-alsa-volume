@@ -94,9 +94,9 @@ class plasmaVolume(plasmascript.Applet):
 
 		self.style_horiz = STYLE_HORYZ
 		self.style_vert = STYLE_VERT
-		sliderColour1 = ColorWidget().getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
-		sliderColour2 = ColorWidget().getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
-		handlerColour = ColorWidget().getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
+		sliderColour1 = ColorWidget(self).getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
+		sliderColour2 = ColorWidget(self).getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
+		handlerColour = ColorWidget(self).getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
 		#print sliderColour1, sliderColour2, handlerColour
 		self.style_horiz = string.replace(self.style_horiz, "#FFF777", sliderColour1)
 		self.style_vert = string.replace(self.style_vert, "#FFF777", sliderColour1)
@@ -106,7 +106,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.style_vert = string.replace(self.style_vert, "#CCCCCC", handlerColour)
 
 	def initValue(self, key_, default = '0'):
-		global Settings
 		if self.Settings.contains(key_) :
 			#print key_, Settings.value(key_).toString()
 			return self.Settings.value(key_).toString()
@@ -176,8 +175,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.connect(self.icon, SIGNAL('clicked()'), self.showSliders)
 		self.icon.setMaximumSize(40.0, 40.0)
 
-		#self.setMinimumSize(20.0, 20.0)
-
 	def startWaitingVolumeChange(self):
 		if not self.Flag.isRunning() :
 			self.Flag.Key = True
@@ -199,7 +196,7 @@ class plasmaVolume(plasmascript.Applet):
 				del self.ScrollWidget
 			self.Scroll = QScrollArea()
 
-			fontStyle = ColorWidget().getRGBaStyle((QString(self.fontColourVar).toUInt()[0], True))
+			fontStyle = ColorWidget(self).getRGBaStyle((QString(self.fontColourVar).toUInt()[0], True))
 			iconPath = QIcon().fromTheme('view-refresh')
 			self.rescanDevices = QPushButton(iconPath, '')
 			#self.rescanDevices.setStyleSheet(fontStyle)
@@ -289,41 +286,23 @@ class plasmaVolume(plasmascript.Applet):
 							or ( self.panelDevices in [[],['']] ) :
 			self.layout.addItem(self.icon)
 			self.icon.show()
-			# iconPresent = 20
 		else:
-			#self.layout.removeItem(self.icon)
-			#self.icon.close()
-			#del self.icon
-			# iconPresent = 0
 			pass
-
-		# str_raw = (self.Settings.value('PanelDevices')).toString()
-		# countPanelDevices = len(string.split(str(str_raw),','))
 
 		if str(self.Settings.value('Vertical::widgetOrientation').toString()) == '1':
 			oriental_ = Qt.Horizontal
 			style_ = self.style_horiz
-			#self.layout.setOrientation(Qt.Vertical)   !!!!!! uncomment !!!!!
-			# if str(self.Settings.value('Vertical::panelOrientation').toString()) == '0':
 			if self.formFactor() == Plasma.Horizontal :
 				self.setMaximumWidth(35)
 			elif self.formFactor() in (Plasma.Planar, Plasma.MediaCenter) :
-				#self.resize(35,35)
-				#self.setMaximumSize(100.0,100.0)
 				pass
 		else:
 			oriental_ = Qt.Vertical
 			style_ = self.style_vert
-			#self.layout.setOrientation(Qt.Horizontal)         !!!!!! uncomment !!!!!
-			# if str(self.Settings.value('Vertical::panelOrientation').toString()) == '1':
 			if self.formFactor() == Plasma.Vertical :
 				self.setMaximumHeight(35)
 			elif self.formFactor() in (Plasma.Planar, Plasma.MediaCenter) :
-				#self.resize(35,35)
-				#self.setMaximumSize(100.0,100.0)
 				pass
-
-		# self.setMaximumSize(currentSize)
 
 		i = 0
 		self.sliderHPlasma = []
@@ -356,9 +335,7 @@ class plasmaVolume(plasmascript.Applet):
 			i += 1
 
 		self.layout.addItem(self.layoutSliders)
-
 		self.setLayout(self.layout)
-
 		self.Timer.singleShot(2000, self.startWaitingVolumeChange)
 
 	def showSliders(self):
@@ -370,11 +347,11 @@ class plasmaVolume(plasmascript.Applet):
 			self.ScrollWidget.show()
 
 	def createConfigurationInterface(self, parent):
-		self.colorSelect = ColorWidget(parent)
+		self.colorSelect = ColorWidget(self, parent)
 		parent.addPage(self.colorSelect, "Color")
 		self.selectDevice = DevicePanel(self, parent)
 		parent.addPage(self.selectDevice,"Panel Devices")
-		self.interfaceSettings = InterfaceSettings(parent)
+		self.interfaceSettings = InterfaceSettings(self, parent)
 		parent.addPage(self.interfaceSettings, 'Interface')
 		self.connect(parent, SIGNAL("okClicked()"), self.configAccepted)
 		self.connect(parent, SIGNAL("cancelClicked()"), self.configDenied)
@@ -597,7 +574,7 @@ class DevicePanel(QWidget):
 		self.Parent = parent
 		self.Applet = obj
 
-		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+		self.Settings = obj.Settings
 
 		self.refreshIcon = QIcon().fromTheme('view-refresh')
 
@@ -642,7 +619,7 @@ class InterfaceSettings(QWidget):
 	def __init__(self, obj = None, parent= None):
 		QWidget.__init__(self, parent)
 
-		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+		self.Settings = obj.Settings
 
 		self.layout = QGridLayout()
 
@@ -667,10 +644,8 @@ class InterfaceSettings(QWidget):
 
 	def refreshInterfaceSettings(self):
 		for item_ in self.list_:
-			if item_.isChecked() :
-				self.Settings.setValue(item_.name, '1')
-			else:
-				self.Settings.setValue(item_.name, '0')
+			value = '1' if item_.isChecked() else '0'
+			self.Settings.setValue(item_.name, value)
 
 		self.Settings.sync()
 
@@ -678,7 +653,7 @@ class ColorWidget(QWidget):
 	def __init__(self, obj = None, parent= None):
 		QWidget.__init__(self, parent)
 
-		self.Settings = QSettings('plasmaVolume','plasmaVolume')
+		self.Settings = obj.Settings
 
 		self.colourIcon = QIcon().fromTheme('color')
 
@@ -728,7 +703,6 @@ class ColorWidget(QWidget):
 		self.setLayout(self.layout)
 
 	def initValue(self, key_, default = '0'):
-		global Settings
 		if self.Settings.contains(key_) :
 			#print key_, Settings.value(key_).toString()
 			return self.Settings.value(key_).toString()
