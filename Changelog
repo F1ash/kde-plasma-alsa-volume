@@ -33,3 +33,6 @@ v.0.41.2 :
 * fixed slider`s mouseRelease & doubleClick events for common events;
 * fixed the freez at plasmoid's init;
 * some fixes & improvements;
+
+v.0.42.2 :
+* some fixes & improvements;
