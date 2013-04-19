@@ -343,8 +343,8 @@ class plasmaVolume(plasmascript.Applet):
 			self.ScrollWidget.close()
 			self.writeParameters()
 		else:
-			self.ScrollWidget.move(self.popupPosition(self.ScrollWidget.sizeHint()))   ##Dialog
 			self.ScrollWidget.show()
+			self.ScrollWidget.move(self.popupPosition(self.ScrollWidget.sizeHint()))   ##Dialog
 
 	def createConfigurationInterface(self, parent):
 		self.colorSelect = ColorWidget(self, parent)
@@ -362,8 +362,8 @@ class plasmaVolume(plasmascript.Applet):
 		dialog.setFaceType(KPageDialog.List)
 		dialog.setButtons( KDialog.ButtonCode(KDialog.Ok | KDialog.Cancel) )
 		self.createConfigurationInterface(dialog)
-		dialog.move(self.popupPosition(dialog.sizeHint()))
 		dialog.exec_()
+		dialog.move(self.popupPosition(dialog.sizeHint()))
 
 	def rescan(self):
 		self.ScrollWidget.close()
