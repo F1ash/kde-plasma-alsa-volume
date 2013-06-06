@@ -88,9 +88,9 @@ class plasmaVolume(plasmascript.Applet):
 
 	def initColor(self):
 		self.fontColourVar = self.initValue('fontColour')
-		self.sliderColour1Var = self.initValue('sliderColour1')
-		self.sliderColour2Var = self.initValue('sliderColour2')
-		self.handlerColourVar = self.initValue('handlerColour')
+		self.sliderColour1Var = self.initValue('sliderColour1', 1355022335)
+		self.sliderColour2Var = self.initValue('sliderColour2', 1355022335)
+		self.handlerColourVar = self.initValue('handlerColour', 1355022335)
 
 		self.style_horiz = STYLE_HORYZ
 		self.style_vert = STYLE_VERT
@@ -111,7 +111,7 @@ class plasmaVolume(plasmascript.Applet):
 			return self.Settings.value(key_).toString()
 		else :
 			if default == '0' :
-				default = ColorWidget().getSystemColor('int')
+				default = ColorWidget(self).getSystemColor('int')
 			self.Settings.setValue(key_, QVariant(default))
 			#print key_, Settings.value(key_).toString()
 			return default
@@ -658,9 +658,9 @@ class ColorWidget(QWidget):
 		self.colourIcon = QIcon().fromTheme('color')
 
 		self.fontColourVar = self.initValue('fontColour')
-		self.sliderColour1Var = self.initValue('sliderColour1')
-		self.sliderColour2Var = self.initValue('sliderColour2')
-		self.handlerColourVar = self.initValue('handlerColour')
+		self.sliderColour1Var = self.initValue('sliderColour1', 1355022335)
+		self.sliderColour2Var = self.initValue('sliderColour2', 1355022335)
+		self.handlerColourVar = self.initValue('handlerColour', 1355022335)
 
 		self.layout = QGridLayout()
 
