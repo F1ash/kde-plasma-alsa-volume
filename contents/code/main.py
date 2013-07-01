@@ -128,7 +128,8 @@ class plasmaVolume(plasmascript.Applet):
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 		self.initColor()
-		self.panelDevices = string.split(str((self.Settings.value('PanelDevices')).toString()),',')
+		self.panelDevices = self.Settings.value('PanelDevices').toString().split(',')
+		self.panelDevices.removeAll('')
 
 		self.connect(self.applet, SIGNAL('destroyed()'), self.down)
 		self.closeApplet.connect(self._close)
@@ -136,6 +137,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.refresh.connect(self.refreshData)
 		self.refreshByDP.connect(self.refreshByDevicePanel)
 
+		self._icon = QIcon().fromTheme('preferences-desktop-sound')
 		self.initIcon()
 
 		self.Dialog = Plasma.Dialog()
@@ -153,10 +155,13 @@ class plasmaVolume(plasmascript.Applet):
 			labelMsg.setToolTip(Msg)
 			self.layout.addItem(labelMsg)
 			self.setLayout(self.layout)
+			self.notification("<font color=red><b>" + Msg + "</b></font>")
 		else:
 			self.Timer = QTimer()
 			self.initContent()
 			self.showPanelDevices()
+			if not len(self.listAllDevices) :
+				self.notification("Audio devices not found.")
 
 		self.setLayout(self.layout)
 
@@ -170,13 +175,13 @@ class plasmaVolume(plasmascript.Applet):
 		self.layoutSliders.setSpacing(0)
 
 		self.icon = Plasma.IconWidget()
-		self.icon.setIcon(QIcon().fromTheme('preferences-desktop-sound'))
+		self.icon.setIcon(self._icon)
 		self.icon.setToolTip('ALSA Volume Control')
 		self.connect(self.icon, SIGNAL('clicked()'), self.showSliders)
 		self.icon.setMaximumSize(40.0, 40.0)
 
 	def startWaitingVolumeChange(self):
-		if not self.Flag.isRunning() :
+		if len(self.listAllDevices) and not self.Flag.isRunning() :
 			self.Flag.Key = True
 			self.Flag.start()
 
@@ -221,12 +226,17 @@ class plasmaVolume(plasmascript.Applet):
 					#print card, alsaaudio.mixers(card), cardList[i]; i += 1
 			except alsaaudio.ALSAAudioError :
 				#print card, ' error'
-				continue
+				pass
+			finally : pass
 		i = 0
 		for card in cardIndexList :
-			for audioDevice in alsaaudio.mixers(card) :
-				self.listAllDevices.append((audioDevice, card, cardList[i]))
-			i += 1
+			try:
+				for audioDevice in alsaaudio.mixers(card) :
+					self.listAllDevices.append((audioDevice, card, cardList[i]))
+			except alsaaudio.ALSAAudioError :
+				#print card, ' error'
+				pass
+			finally : i += 1
 		#print self.listAllDevices
 		i = 0
 		for audioDevice in self.listAllDevices :
@@ -282,14 +292,12 @@ class plasmaVolume(plasmascript.Applet):
 			del self.layoutSliders
 		self.initIcon()
 
-		if str(self.Settings.value('Icon_On').toString()) == '1'\
-							or ( self.panelDevices in [[],['']] ) :
+		if self.Settings.value('Icon_On').toString() == '1'\
+							or self.panelDevices.isEmpty() :
 			self.layout.addItem(self.icon)
 			self.icon.show()
-		else:
-			pass
 
-		if str(self.Settings.value('Vertical::widgetOrientation').toString()) == '1':
+		if self.Settings.value('Vertical::widgetOrientation').toString() == '1':
 			oriental_ = Qt.Horizontal
 			style_ = self.style_horiz
 			if self.formFactor() == Plasma.Horizontal :
@@ -370,11 +378,15 @@ class plasmaVolume(plasmascript.Applet):
 		self.initContent()
 		self.showPanelDevices()
 		self.showSliders()
+		if not len(self.listAllDevices) :
+			self.notification("Audio devices not found.")
 
 	def refreshByDevicePanel(self):
 		self.initContent()
 		self.showPanelDevices()
 		self.showConfigurationInterface()
+		if not len(self.listAllDevices) :
+			self.notification("Audio devices not found.")
 
 	def refreshData(self):
 		self.Settings.sync()
@@ -406,10 +418,13 @@ class plasmaVolume(plasmascript.Applet):
 					pass
 				finally : pass
 		self.config().sync()
+		self.notification('Parameters are saved.')
+
+	def notification(self, msg):
 		newMailNotify = KNotification.event(KNotification.Notification, \
 						QString('<b>ALSA Volume Control</b>'), \
-						QString('Parameters are saved.'), \
-						QPixmap(), \
+						QString(msg), \
+						self._icon.pixmap(QSize(64, 64)), \
 						None, \
 						KNotification.CloseOnTimeout)
 		newMailNotify.sendEvent()
@@ -606,13 +621,12 @@ class DevicePanel(QWidget):
 		self.Applet.refreshByDP.emit()
 
 	def refreshPanelDevices(self, obj):
-		obj.panelDevices = []
+		obj.panelDevices.clear()
 		for item_ in self.presentDevices:
 			if item_.isChecked() :
-				obj.panelDevices += [item_.name]
+				obj.panelDevices.append(item_.name)
 
-		str_ = string.join(obj.panelDevices, ',')
-		self.Settings.setValue('PanelDevices',str_)
+		self.Settings.setValue('PanelDevices', obj.panelDevices.join(','))
 		self.Settings.sync()
 
 class InterfaceSettings(QWidget):

@@ -40,3 +40,7 @@ v.0.42.2 :
 v.0.42.3 :
 * fixed initiate;
 * improve initiate;
+
+v.0.43.5 :
+* fixed the applet init at case without available audio devices;
+* some fixes && improvements;
