@@ -44,3 +44,9 @@ v.0.42.3 :
 v.0.43.5 :
 * fixed the applet init at case without available audio devices;
 * some fixes && improvements;
+
+v.0.50.0 :
+* fixed changing a color of horizontal slider's handler;
+* refactoring;
+* added slider's size Settings;
+* added displaying a changes of slider's color & size into Settings;
