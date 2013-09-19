@@ -25,12 +25,17 @@ try :
 	warningMsg = ''
 	from PyQt4.QtCore import *
 	from PyQt4.QtGui import *
-	from PyKDE4.kdecore import *
-	from PyKDE4.kdeui import *
+	from PyKDE4.kdeui import KPageDialog, KDialog, KNotification
 	from PyKDE4.plasma import Plasma
 	from PyKDE4 import plasmascript
+	import os.path, select, time, alsaaudio
+	
+	from AudioOutput import AudioOutput
+	from DevicePanel import DevicePanel
+	from InterfaceSettings import InterfaceSettings
+	from ColorWidget import ColorWidget
+	from SizeWidget import SizeWidget
 	from Style import STYLE_HORYZ, STYLE_VERT
-	import os.path, string, select, time, alsaaudio
 except ImportError, warningMsg :
 	print "ImportError", warningMsg
 finally:
@@ -86,24 +91,50 @@ class plasmaVolume(plasmascript.Applet):
 	def __init__(self,parent,args=None):
 		plasmascript.Applet.__init__(self,parent)
 
-	def initColor(self):
+	def _initColor(self):
 		self.fontColourVar = self.initValue('fontColour')
 		self.sliderColour1Var = self.initValue('sliderColour1', 1355022335)
 		self.sliderColour2Var = self.initValue('sliderColour2', 1355022335)
 		self.handlerColourVar = self.initValue('handlerColour', 1355022335)
 
-		self.style_horiz = STYLE_HORYZ
-		self.style_vert = STYLE_VERT
+		style_horiz = STYLE_HORYZ
+		style_vert = STYLE_VERT
 		sliderColour1 = ColorWidget(self).getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True), 'slider')
 		sliderColour2 = ColorWidget(self).getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True), 'slider')
 		handlerColour = ColorWidget(self).getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True), 'slider')
 		#print sliderColour1, sliderColour2, handlerColour
-		self.style_horiz = string.replace(self.style_horiz, "#FFF777", sliderColour1)
-		self.style_vert = string.replace(self.style_vert, "#FFF777", sliderColour1)
-		self.style_horiz = string.replace(self.style_horiz, "#2277FF", sliderColour2)
-		self.style_vert = string.replace(self.style_vert, "#2277FF", sliderColour2)
-		self.style_horiz = string.replace(self.style_horiz, "#CCCCCC", handlerColour)
-		self.style_vert = string.replace(self.style_vert, "#CCCCCC", handlerColour)
+		style_horiz = style_horiz.replace("#FFF777", sliderColour1)
+		style_vert = style_vert.replace("#FFF777", sliderColour1)
+		style_horiz = style_horiz.replace("#2277FF", sliderColour2)
+		style_vert = style_vert.replace("#2277FF", sliderColour2)
+		style_horiz = style_horiz.replace("#CCCCCC", handlerColour)
+		style_vert = style_vert.replace("#CCCCCC", handlerColour)
+		return style_horiz, style_vert
+
+	def initColor(self):
+		self.style_horiz, self.style_vert = self._initColor()
+
+	def _initSize(self, style_horiz = STYLE_HORYZ, style_vert = STYLE_VERT):
+		self.Settings.beginGroup("Size")
+		self.marginVar = self.Settings.value('Margin', 3).toString()
+		self.thicknessVar = self.Settings.value('Thickness', 5).toString()
+		self.handlerThicknessVar = self.Settings.value('HThickness', 5).toString()
+		self.handlerLedgeVar = self.Settings.value('HLedge', 3).toString()
+		self.Settings.endGroup()
+		
+		style_horiz = style_horiz.replace("__MARGIN__", self.marginVar)
+		style_vert = style_vert.replace("__MARGIN__", self.marginVar)
+		style_horiz = style_horiz.replace("__THICK__", self.thicknessVar)
+		style_vert = style_vert.replace("__THICK__", self.thicknessVar)
+		style_horiz = style_horiz.replace("__HTHICK__", self.handlerThicknessVar)
+		style_vert = style_vert.replace("__HTHICK__", self.handlerThicknessVar)
+		style_horiz = style_horiz.replace("__HLEDGE__", self.handlerLedgeVar)
+		style_vert = style_vert.replace("__HLEDGE__", self.handlerLedgeVar)
+		return style_horiz, style_vert
+
+	def initSize(self):
+		self.style_horiz, self.style_vert = \
+			self._initSize(self.style_horiz, self.style_vert)
 
 	def initValue(self, key_, default = '0'):
 		if self.Settings.contains(key_) :
@@ -128,6 +159,7 @@ class plasmaVolume(plasmascript.Applet):
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
 		self.initColor()
+		self.initSize()
 		self.panelDevices = self.Settings.value('PanelDevices').toString().split(',')
 		self.panelDevices.removeAll('')
 
@@ -136,6 +168,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.killThread.connect(self.stopWaitingVolumeChange)
 		self.refresh.connect(self.refreshData)
 		self.refreshByDP.connect(self.refreshByDevicePanel)
+		self.applet.geometryChanged.connect(self._resizeEvent)
 
 		self._icon = QIcon().fromTheme('preferences-desktop-sound')
 		self.initIcon()
@@ -191,6 +224,7 @@ class plasmaVolume(plasmascript.Applet):
 
 	def initContent(self):
 		self.initColor()
+		self.initSize()
 		if 'Dialog' in dir(self) :
 			del self.Dialog
 			self.Dialog = QWidget()
@@ -355,12 +389,14 @@ class plasmaVolume(plasmascript.Applet):
 			self.ScrollWidget.move(self.popupPosition(self.ScrollWidget.sizeHint()))   ##Dialog
 
 	def createConfigurationInterface(self, parent):
-		self.colorSelect = ColorWidget(self, parent)
-		parent.addPage(self.colorSelect, "Color")
 		self.selectDevice = DevicePanel(self, parent)
 		parent.addPage(self.selectDevice,"Panel Devices")
 		self.interfaceSettings = InterfaceSettings(self, parent)
 		parent.addPage(self.interfaceSettings, 'Interface')
+		self.sizeSelect = SizeWidget(self, parent)
+		parent.addPage(self.sizeSelect, "Size")
+		self.colorSelect = ColorWidget(self, parent)
+		parent.addPage(self.colorSelect, "Color")
 		self.connect(parent, SIGNAL("okClicked()"), self.configAccepted)
 		self.connect(parent, SIGNAL("cancelClicked()"), self.configDenied)
 
@@ -398,6 +434,7 @@ class plasmaVolume(plasmascript.Applet):
 		self.selectDevice.refreshPanelDevices(self)
 		self.interfaceSettings.refreshInterfaceSettings()
 		self.colorSelect.refreshInterfaceSettings()
+		self.sizeSelect.refreshInterfaceSettings()
 		self.refresh.emit()
 
 	def configDenied(self):
@@ -456,343 +493,15 @@ class plasmaVolume(plasmascript.Applet):
 			#ev.ignore()
 			self.refreshData()
 
+	def _resizeEvent(self):
+		if hasattr(self, 'sizeSelect') :
+			self.sizeSelect.testSliders.setTestWidgetsSize()
+			self.colorSelect.testSliders.setTestWidgetsSize()
+
 	def _close(self):
 		print "plasmaVolume destroyed manually."
 
 	def __del__(self): self.down()
-
-class AudioOutput():
-	def __init__(self, mix = 'Master', parent = None, i = 0, cardIndex = 0):
-
-		self.Parent = parent
-		self.id_ = i
-
-		self.mix = mix
-		self.cardIndex = cardIndex
-
-		self.playIcon = QIcon().fromTheme('kt-start')
-		self.muteIcon = QIcon().fromTheme('kt-stop')
-
-		self.mixerID = None
-		for _id in xrange(100) :				## how much?
-			try :
-				x = ''
-				self.Mixer = alsaaudio.Mixer(self.mix, _id, cardindex = self.cardIndex)
-			except alsaaudio.ALSAAudioError, x:
-				#print x
-				continue
-			self.mixerID = _id
-			break
-
-		#print self.Mixer.mixer(), self.mix
-		if self.mixerID is not None :
-			self.capability = self.Mixer.volumecap()
-			self.oldValue = self.Mixer.getvolume()
-			# print self.oldValue, self.capability
-			try :
-				Mute = 0
-				for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute() :
-					Mute += int(i)
-				if Mute == 0:
-					MuteStat = 'Active'
-					self.MuteStat = 0
-					self.Mute_ = QPushButton(self.muteIcon, '')
-				else:
-					MuteStat = 'Mute'
-					self.MuteStat = 1
-					self.Mute_ = QPushButton(self.playIcon, '')
-				#self.Mute_.setMaximumSize(40.0, 40.0)
-				self.Mute_.setToolTip('Status: ' + MuteStat)
-			except alsaaudio.ALSAAudioError, x :
-				# print x, '\n'
-				self.Mute_ = ''
-			finally:
-				pass
-		else :
-			self.capability = []
-		if self.Parent.config().hasKey(self.mix) :
-			data_ = self.Parent.config().readEntry(self.mix).split(',')
-			m, state = data_.takeLast().toInt()
-			if state and m>=0 : self.setMute(m)
-			v, state = data_.takeFirst().toInt()
-			if state and v>=0 : self.setVolume(v)
-			#print 'Init: %s\n\t\tvolume(%s),\tmute(%s)' % (self.mix, v, m)
-
-	def setVolume_timeout(self):
-		vol_ = alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getvolume()
-		self.setVolume(int(min(vol_)))
-
-	def setMuted_(self):
-		Mute = 0
-		for i in self.Mixer.getmute():
-			Mute += int(i)
-		self.setMute(0 if Mute else 1)
-
-	def setMute(self, Mute):
-		if 0 == Mute:
-			self.Mixer.setmute(0)
-			MuteStat = 'Active'
-			self.MuteStat = 0
-			self.Mute_.setIcon(self.muteIcon)
-		elif Mute > 0 :
-			self.Mixer.setmute(1)
-			MuteStat = 'Mute'
-			self.MuteStat = 1
-			self.Mute_.setIcon(self.playIcon)
-		if Mute >= 0 : self.Mute_.setToolTip('Status: ' + MuteStat)
-
-	def setMuted_timeout(self):
-		Mute = 0
-		for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute():
-			Mute += int(i)
-		if self.MuteStat != Mute : self.setMute(Mute)
-
-	def setVolume(self, vol_):
-		i = 0
-		for channal in self.oldValue:
-			self.oldValue[i] = vol_
-			self.Mixer.setvolume(vol_, i)
-			i += 1
-		if hasattr(self.Parent, 'sliderHandle') and len(self.Parent.sliderHandle)-1 >= self.id_ :
-			self.setCurrentValue(self.Parent.sliderHandle[self.id_])
-		if hasattr(self.Parent, 'sliderHPlasma') and len(self.Parent.sliderHPlasma)-1 >= self.id_ :
-			if (type(self.Parent.sliderHPlasma[self.id_]) is not str) :
-				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], True)
-
-	def setCurrentValue(self, obj, panel = False):
-		vol_ = int(min(self.oldValue))
-		obj.setValue(vol_)
-		obj.setToolTip(obj.name + ' ' + str(vol_) + '%')
-		if panel :
-			InfoList = self.getInfoList()
-			Plasma.ToolTipManager.self().setContent( self.Parent.applet, Plasma.ToolTipContent( \
-					self.Parent.icon.toolTip(), \
-					InfoList, \
-					self.Parent.icon.icon() ) )
-
-	def getInfoList(self):
-		i = 0
-		_list = ''
-		for slider in self.Parent.sliderHandle:
-			if (type(slider) is not str):
-				sliderName = slider.name
-				if sliderName in self.Parent.panelDevices :
-					name = sliderName; value = str(slider.value())
-					_list += '<pre><b>' + name + '&#09;' + value + '</b></pre>'
-			i += 1
-		return _list
-
-class DevicePanel(QWidget):
-	def __init__(self, obj = None, parent = None):
-		QWidget.__init__(self, parent)
-
-		self.Parent = parent
-		self.Applet = obj
-
-		self.Settings = obj.Settings
-
-		self.refreshIcon = QIcon().fromTheme('view-refresh')
-
-		self.layout = QGridLayout()
-
-		i = 0
-		self.rescanButton = QPushButton(self.refreshIcon, '')
-		self.rescanButton.setToolTip('Rescan')
-		self.rescanButton.clicked.connect(self.rescan)
-		self.layout.addWidget(self.rescanButton, i, 1); i = + 1
-		str_raw = (self.Settings.value('PanelDevices')).toString()
-		self.presentDevices = []
-		listPanelDevices = string.split(str(str_raw),',')
-		for item_ in obj.sliderHandle:
-			if (type(item_) is not str) :
-				str_ = item_.name
-				self.presentDevices += [str_]
-				self.presentDevices[i - 1] = QCheckBox(str_)
-				self.presentDevices[i - 1].name = str_
-				if str_ in listPanelDevices:
-					self.presentDevices[i - 1].setCheckState(2)
-				self.layout.addWidget(self.presentDevices[i - 1], i, 0)
-				i += 1
-
-		self.setLayout(self.layout)
-
-	def rescan(self):
-		self.Parent.done(0)
-		self.Applet.refreshByDP.emit()
-
-	def refreshPanelDevices(self, obj):
-		obj.panelDevices.clear()
-		for item_ in self.presentDevices:
-			if item_.isChecked() :
-				obj.panelDevices.append(item_.name)
-
-		self.Settings.setValue('PanelDevices', obj.panelDevices.join(','))
-		self.Settings.sync()
-
-class InterfaceSettings(QWidget):
-	def __init__(self, obj = None, parent= None):
-		QWidget.__init__(self, parent)
-
-		self.Settings = obj.Settings
-
-		self.layout = QGridLayout()
-
-		i = 0
-		self.list_ = []
-		for item_ in ['Icon_On', 'Vertical::widgetOrientation']:
-		# 'Vertical::panelOrientation',\
-			str_ = str((self.Settings.value(item_)).toString())
-			self.list_ += [item_]
-			self.list_[i] = QCheckBox(item_)
-			self.list_[i].name = item_
-			if str_ == '1':
-				self.list_[i].setCheckState(2)
-			self.layout.addWidget(self.list_[i], i, 0)
-			i += 1
-
-		labelDefaultInfo = QLabel()
-		labelDefaultInfo.setText('<font color=red><b>Default:<br>Horizontal::widgetOrientation</b></font>')
-		self.layout.addWidget(labelDefaultInfo,i,0)
-
-		self.setLayout(self.layout)
-
-	def refreshInterfaceSettings(self):
-		for item_ in self.list_:
-			value = '1' if item_.isChecked() else '0'
-			self.Settings.setValue(item_.name, value)
-
-		self.Settings.sync()
-
-class ColorWidget(QWidget):
-	def __init__(self, obj = None, parent= None):
-		QWidget.__init__(self, parent)
-
-		self.Settings = obj.Settings
-
-		self.colourIcon = QIcon().fromTheme('color')
-
-		self.fontColourVar = self.initValue('fontColour')
-		self.sliderColour1Var = self.initValue('sliderColour1', 1355022335)
-		self.sliderColour2Var = self.initValue('sliderColour2', 1355022335)
-		self.handlerColourVar = self.initValue('handlerColour', 1355022335)
-
-		self.layout = QGridLayout()
-
-		self.fontColourLabel = QLabel('fontColour :')
-		self.fontColourLabel.setStyleSheet(self.getRGBaStyle((QString(self.fontColourVar).toUInt()[0], True)))
-		self.layout.addWidget(self.fontColourLabel, 0, 0)
-		self.fontColourButton = QPushButton(self.colourIcon, '')
-		self.fontColourButton.setMaximumWidth(30)
-		self.fontColourButton.setToolTip('Slider Shield Font Color')
-		self.connect(self.fontColourButton, SIGNAL('clicked()'), self.fontColour)
-		self.layout.addWidget(self.fontColourButton, 0, 1)
-
-		self.sliderColour1Label = QLabel('sliderColour1 :')
-		self.sliderColour1Label.setStyleSheet(self.getRGBaStyle((QString(self.sliderColour1Var).toUInt()[0], True)))
-		self.layout.addWidget(self.sliderColour1Label, 1, 0)
-		self.sliderColour1Button = QPushButton(self.colourIcon, '')
-		self.sliderColour1Button.setMaximumWidth(30)
-		self.sliderColour1Button.setToolTip('Background Slider Color')
-		self.connect(self.sliderColour1Button, SIGNAL('clicked()'), self.sliderColour1)
-		self.layout.addWidget(self.sliderColour1Button, 1, 1)
-
-		self.sliderColour2Label = QLabel('sliderColour2 :')
-		self.sliderColour2Label.setStyleSheet(self.getRGBaStyle((QString(self.sliderColour2Var).toUInt()[0], True)))
-		self.layout.addWidget(self.sliderColour2Label, 2, 0)
-		self.sliderColour2Button = QPushButton(self.colourIcon, '')
-		self.sliderColour2Button.setMaximumWidth(30)
-		self.sliderColour2Button.setToolTip('Slider Color')
-		self.connect(self.sliderColour2Button, SIGNAL('clicked()'), self.sliderColour2)
-		self.layout.addWidget(self.sliderColour2Button, 2, 1)
-
-		self.handlerColourLabel = QLabel('handlerColour :')
-		self.handlerColourLabel.setStyleSheet(self.getRGBaStyle((QString(self.handlerColourVar).toUInt()[0], True)))
-		self.layout.addWidget(self.handlerColourLabel, 3, 0)
-		self.handlerColourButton = QPushButton(self.colourIcon, '')
-		self.handlerColourButton.setMaximumWidth(30)
-		self.handlerColourButton.setToolTip('handler Color')
-		self.connect(self.handlerColourButton, SIGNAL('clicked()'), self.handlerColour)
-		self.layout.addWidget(self.handlerColourButton, 3, 1)
-
-		self.setLayout(self.layout)
-
-	def initValue(self, key_, default = '0'):
-		if self.Settings.contains(key_) :
-			#print key_, Settings.value(key_).toString()
-			return self.Settings.value(key_).toString()
-		else :
-			if default == '0' :
-				default = self.getSystemColor('int')
-			self.Settings.setValue(key_, QVariant(default))
-			#print key_, Settings.value(key_).toString()
-			return default
-
-	def getSystemColor(self, key_ = ''):
-		currentBrush = QPalette().buttonText()
-		colour = currentBrush.color()
-		if key_ == 'int' :
-			# print colour.rgba()
-			return colour.rgba()
-		else :
-			return str(colour.getRgb())
-
-	def getRGBaStyle(self, (colour, yes), str_ = 'label'):
-		if yes :
-			if str_ == 'label' :
-				style = 'QLabel { color: rgba' + str(QColor().fromRgba(colour).getRgb()) + ';} '
-			else :
-				style = 'rgba' + str(QColor().fromRgba(colour).getRgb())
-		else :
-			if str_ == 'label' :
-				style = 'QLabel { color: rgba' + self.getSystemColor() + ';} '
-			else :
-				style = 'rgba' + self.getSystemColor()
-		return style
-
-	def getColour(self, (currentColour, yes)):
-		colour = QColorDialog()
-		selectColour, _yes = colour.getRgba(currentColour)
-		colour.done(0)
-		return str(selectColour), _yes, self.getRGBaStyle((selectColour, _yes))
-
-	def fontColour(self):
-		colour, yes, style = self.getColour(QString(self.fontColourVar).toUInt())
-		if yes :
-			self.fontColourVar = colour
-			self.fontColourLabel.clear()
-			self.fontColourLabel.setStyleSheet(style)
-			self.fontColourLabel.setText('fontColour :')
-
-	def sliderColour1(self):
-		colour, yes, style = self.getColour(QString(self.sliderColour1Var).toUInt())
-		if yes :
-			self.sliderColour1Var = colour
-			self.sliderColour1Label.clear()
-			self.sliderColour1Label.setStyleSheet(style)
-			self.sliderColour1Label.setText('sliderColour1 :')
-
-	def sliderColour2(self):
-		colour, yes, style = self.getColour(QString(self.sliderColour2Var).toUInt())
-		if yes :
-			self.sliderColour2Var = colour
-			self.sliderColour2Label.clear()
-			self.sliderColour2Label.setStyleSheet(style)
-			self.sliderColour2Label.setText('sliderColour2 :')
-
-	def handlerColour(self):
-		colour, yes, style = self.getColour(QString(self.handlerColourVar).toUInt())
-		if yes :
-			self.handlerColourVar = colour
-			self.handlerColourLabel.clear()
-			self.handlerColourLabel.setStyleSheet(style)
-			self.handlerColourLabel.setText('handlerColour :')
-
-	def refreshInterfaceSettings(self):
-		self.Settings.setValue('fontColour', self.fontColourVar)
-		self.Settings.setValue('sliderColour1', self.sliderColour1Var)
-		self.Settings.setValue('sliderColour2', self.sliderColour2Var)
-		self.Settings.setValue('handlerColour', self.handlerColourVar)
-		self.Settings.sync()
 
 def CreateApplet(parent):
 	return plasmaVolume(parent)
