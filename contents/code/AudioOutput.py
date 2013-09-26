@@ -20,6 +20,7 @@
 #
 
 from PyQt4.QtGui import QIcon, QPushButton
+from PyQt4.QtCore import pyqtSlot
 from PyKDE4.plasma import Plasma
 import alsaaudio
 
@@ -82,7 +83,7 @@ class AudioOutput():
 
 	def setVolume_timeout(self):
 		vol_ = alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getvolume()
-		self.setVolume(int(min(vol_)))
+		self.setVolumeFromDevice(int(min(vol_)))
 
 	def setMuted_(self):
 		Mute = 0
@@ -109,22 +110,59 @@ class AudioOutput():
 			Mute += int(i)
 		if self.MuteStat != Mute : self.setMute(Mute)
 
+	@pyqtSlot(int, name="setVolumeFromDevice")
+	def setVolumeFromDevice(self, volume):
+		#
+		# calculating value of slider from alsa-devices volume
+		#
+		if volume == int(min(self.oldValue)) : return
+		if self.Parent.sensitivity > 1 :
+			if volume == 100 :
+				vol_ = self.Parent.sliderMaxValue
+			else :
+				vol_ = int(round(float(volume)/self.Parent.sensitivity))
+		elif self.Parent.sensitivity < 1 :
+			vol_ = volume*abs(self.Parent.sensitivity)
+		else : vol_ = volume
+		######
+
+		for channal in self.oldValue : channal = volume
+
+		self.applyParameters(vol_)
+
+	@pyqtSlot(int, name="setVolume")
 	def setVolume(self, vol_):
+		#
+		# calculating volume of alsa-devices from slider value
+		#
+		if self.Parent.sensitivity > 1 :
+			volume = vol_*self.Parent.sensitivity
+		elif self.Parent.sensitivity < 1 :
+			if vol_ == self.Parent.sliderMaxValue :
+				volume = 100
+			else :
+				volume = int(round(float(vol_)/abs(self.Parent.sensitivity)))
+		else : volume = vol_
+		######
+		
+		if volume == int(min(self.oldValue)) : return
 		i = 0
 		for channal in self.oldValue:
-			self.oldValue[i] = vol_
-			self.Mixer.setvolume(vol_, i)
+			self.oldValue[i] = volume
+			self.Mixer.setvolume(volume, i)
 			i += 1
+		self.applyParameters(vol_)
+
+	def applyParameters(self, vol_):
 		if hasattr(self.Parent, 'sliderHandle') and len(self.Parent.sliderHandle)-1 >= self.id_ :
-			self.setCurrentValue(self.Parent.sliderHandle[self.id_])
+			self.setCurrentValue(self.Parent.sliderHandle[self.id_], vol_)
 		if hasattr(self.Parent, 'sliderHPlasma') and len(self.Parent.sliderHPlasma)-1 >= self.id_ :
 			if (type(self.Parent.sliderHPlasma[self.id_]) is not str) :
-				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], True)
+				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], vol_, True)
 
-	def setCurrentValue(self, obj, panel = False):
-		vol_ = int(min(self.oldValue))
+	def setCurrentValue(self, obj, vol_, panel = False):
 		obj.setValue(vol_)
-		obj.setToolTip(obj.name + ' ' + str(vol_) + '%')
+		obj.setToolTip(obj.name + ' ' + str(self.oldValue[0]) + '%')
 		if panel :
 			InfoList = self.getInfoList()
 			Plasma.ToolTipManager.self().setContent( self.Parent.applet, Plasma.ToolTipContent( \
@@ -135,12 +173,13 @@ class AudioOutput():
 	def getInfoList(self):
 		i = 0
 		_list = ''
-		for slider in self.Parent.sliderHandle:
-			if (type(slider) is not str):
+		for slider in self.Parent.sliderHandle :
+			if (type(slider) is not str) :
 				sliderName = slider.name
 				if sliderName in self.Parent.panelDevices :
-					name = sliderName; value = str(slider.value())
-					_list += '<pre><b>' + name + '&#09;' + value + '</b></pre>'
+					name = sliderName
+					volume = self.Parent.ao[i].oldValue[0]
+					_list += '<pre><b>' + name + '&#09;' + str(volume) + '</b></pre>'
 			i += 1
 		return _list
 

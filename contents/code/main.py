@@ -136,6 +136,26 @@ class plasmaVolume(plasmascript.Applet):
 		self.style_horiz, self.style_vert = \
 			self._initSize(self.style_horiz, self.style_vert)
 
+	def initSensitivityVariable(self):
+		if self.config().hasKey("Sensitivity") :
+			data_ = self.config().readEntry("Sensitivity")
+			value, state = data_.toInt()
+			if not state : value = 100
+		else : value = 100
+		if value<100 :
+			s = -1*( 2 + int(float(100-value)/33) )
+		else :
+			s = 1 + int(float(value-100)/25)
+		self.sensitivity = s
+
+	def initSlidersRange(self):
+		self.sliderMaxValue = 100
+		self.sliderMinValue = 0
+		if self.sensitivity > 1 :
+			self.sliderMaxValue = int(100.0/self.sensitivity)
+		elif self.sensitivity < 1 :
+			self.sliderMaxValue = abs(100*self.sensitivity)
+
 	def initValue(self, key_, default = '0'):
 		if self.Settings.contains(key_) :
 			#print key_, Settings.value(key_).toString()
@@ -158,8 +178,6 @@ class plasmaVolume(plasmascript.Applet):
 		self.setHasConfigurationInterface(True)
 
 		self.Settings = QSettings('plasmaVolume','plasmaVolume')
-		self.initColor()
-		self.initSize()
 		self.panelDevices = self.Settings.value('PanelDevices').toString().split(',')
 		self.panelDevices.removeAll('')
 
@@ -225,6 +243,8 @@ class plasmaVolume(plasmascript.Applet):
 	def initContent(self):
 		self.initColor()
 		self.initSize()
+		self.initSensitivityVariable()
+		self.initSlidersRange()
 		if 'Dialog' in dir(self) :
 			del self.Dialog
 			self.Dialog = QWidget()
@@ -241,7 +261,7 @@ class plasmaVolume(plasmascript.Applet):
 			#self.rescanDevices.setStyleSheet(fontStyle)
 			self.rescanDevices.setToolTip('Rescan')
 			self.rescanDevices.clicked.connect(self.rescan)
-			self.panelNameLabel = QLabel('<b>Common Device Panel</b>')
+			self.panelNameLabel = QLabel('<b><u>Common Device Panel</u></b>')
 			self.panelNameLabel.setStyleSheet(fontStyle)
 			self.Dialog.layout.addWidget(self.panelNameLabel,0,1)
 			self.Dialog.layout.addWidget(self.rescanDevices,0,2)
@@ -282,9 +302,10 @@ class plasmaVolume(plasmascript.Applet):
 			if not ( self.ao[i].capability in ([], ['']) ) :
 
 				self.sliderHandle.append(QSlider(Qt.Horizontal))
-				self.sliderHandle[i].setTickPosition(2)
+				self.sliderHandle[i].setTickPosition(QSlider.TicksBelow)
 				self.sliderHandle[i].name = name + ' \\ ' + card
-				self.ao[i].setCurrentValue(self.sliderHandle[i])
+				self.sliderHandle[i].setRange(self.sliderMinValue, self.sliderMaxValue)
+				self.ao[i].setVolumeFromDevice(int(min(self.ao[i].oldValue)))
 				self.Dialog.layout.addWidget(self.sliderHandle[i],i+1,5)
 				self.sliderHandle[i].valueChanged.connect(self.ao[i].setVolume)
 
@@ -360,9 +381,10 @@ class plasmaVolume(plasmascript.Applet):
 						self.sliderHPlasma[i].setToolTip(sliderName)
 						self.sliderHPlasma[i].name = sliderName
 						self.sliderHPlasma[i].setStyleSheet(style_)
+						self.sliderHPlasma[i].setRange(self.sliderMinValue, self.sliderMaxValue)
 						self.sliderHPlasma[i].mouseDoubleClickEvent = self.mouseDoubleClickEvent
 						self.sliderHPlasma[i].mouseReleaseEvent = self.mouseReleaseEvent
-						self.ao[i].setCurrentValue(self.sliderHPlasma[i])
+						self.ao[i].setVolumeFromDevice(int(min(self.ao[i].oldValue)))
 						if oriental_ == Qt.Vertical:
 							self.layoutSliders.addItem(self.sliderHPlasma[i], 0, i)
 						else:

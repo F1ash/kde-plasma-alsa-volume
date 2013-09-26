@@ -50,3 +50,6 @@ v.0.50.0 :
 * refactoring;
 * added slider's size Settings;
 * added displaying a changes of slider's color & size into Settings;
+
+v.0.51.0 :
+* added sensitivity for sliders;

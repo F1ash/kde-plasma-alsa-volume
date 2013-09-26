@@ -20,21 +20,21 @@
 #  
 
 from PyQt4.QtGui import *
+from PyQt4.QtCore import Qt
+from SensitivitySlider import SensitivitySlider
 
 class InterfaceSettings(QWidget):
 	def __init__(self, obj = None, parent= None):
 		QWidget.__init__(self, parent)
-
+		self.obj = obj
 		self.Settings = obj.Settings
-
 		self.layout = QGridLayout()
 
 		i = 0
 		self.list_ = []
-		for item_ in ['Icon_On', 'Vertical::widgetOrientation']:
-		# 'Vertical::panelOrientation',\
+		for item_ in ('Icon_On', 'Vertical::widgetOrientation') :
 			str_ = str((self.Settings.value(item_)).toString())
-			self.list_ += [item_]
+			self.list_.append(item_)
 			self.list_[i] = QCheckBox(item_)
 			self.list_[i].name = item_
 			if str_ == '1':
@@ -45,6 +45,8 @@ class InterfaceSettings(QWidget):
 		labelDefaultInfo = QLabel()
 		labelDefaultInfo.setText('<font color=red><b>Default:<br>Horizontal::widgetOrientation</b></font>')
 		self.layout.addWidget(labelDefaultInfo,i,0)
+		self.sensitivitySlider = SensitivitySlider(obj, self)
+		self.layout.addWidget(self.sensitivitySlider,i+1,0)
 
 		self.setLayout(self.layout)
 
@@ -52,5 +54,9 @@ class InterfaceSettings(QWidget):
 		for item_ in self.list_:
 			value = '1' if item_.isChecked() else '0'
 			self.Settings.setValue(item_.name, value)
-
 		self.Settings.sync()
+		
+		self.obj.config().writeEntry(\
+				"Sensitivity", \
+				self.sensitivitySlider.sensitivitySlider.value())
+		self.obj.config().sync()
