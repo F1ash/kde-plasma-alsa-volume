@@ -245,13 +245,21 @@ class plasmaVolume(plasmascript.Applet):
 		self.initSize()
 		self.initSensitivityVariable()
 		self.initSlidersRange()
-		if 'Dialog' in dir(self) :
+		if hasattr(self, 'Dialog') :
 			del self.Dialog
 			self.Dialog = QWidget()
 			self.Dialog.layout = QGridLayout()
-			if 'Scroll' in dir(self) :
+			if hasattr(self, 'sliderHandle') :
+				del self.sliderHandle
+			if hasattr(self, 'label') :
+				del self.label
+			if hasattr(self, 'ao') :
+				del self.ao
+			if hasattr(self, 'listAllDevices') :
+				del self.listAllDevices
+			if hasattr(self, 'Scroll') :
 				del self.Scroll
-			if 'ScrollWidget' in dir(self) :
+			if hasattr(self, 'ScrollWidget') :
 				del self.ScrollWidget
 			self.Scroll = QScrollArea()
 
@@ -305,9 +313,9 @@ class plasmaVolume(plasmascript.Applet):
 				self.sliderHandle[i].setTickPosition(QSlider.TicksBelow)
 				self.sliderHandle[i].name = name + ' \\ ' + card
 				self.sliderHandle[i].setRange(self.sliderMinValue, self.sliderMaxValue)
-				self.ao[i].setVolumeFromDevice(int(min(self.ao[i].oldValue)))
+				self.ao[i].initSliderValues()
 				self.Dialog.layout.addWidget(self.sliderHandle[i],i+1,5)
-				self.sliderHandle[i].valueChanged.connect(self.ao[i].setVolume)
+				self.sliderHandle[i].valueChanged.connect(self.ao[i].receiveValueFromSlider)
 
 				self.label.append(name)
 				self.label[i] = QLabel('<b><i>' + name + ' \\ ' + card + '</i></b>')
@@ -315,12 +323,12 @@ class plasmaVolume(plasmascript.Applet):
 				self.label[i].setToolTip(name)
 				self.Dialog.layout.addWidget(self.label[i],i+1,1)
 
-				if (type(self.ao[i].Mute_) is not str):
+				if not (self.ao[i].Mute_ is None) :
 					self.Dialog.layout.addWidget(self.ao[i].Mute_,i+1,2)
-					self.ao[i].Mute_.clicked.connect(self.ao[i].setMuted_)
-					self.connect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
+					self.ao[i].Mute_.clicked.connect(self.ao[i].changeMuteState)
+					self.connect(self, SIGNAL('changed()'), self.ao[i].receiveVolumeFromDevice)
 
-				self.connect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
+				self.connect(self, SIGNAL('changed()'), self.ao[i].receiveVolumeFromDevice)
 			else:
 				self.label.append('')
 				self.sliderHandle.append('')
@@ -340,11 +348,13 @@ class plasmaVolume(plasmascript.Applet):
 		self.ScrollWidget.setResizeHandleCorners( Plasma.Dialog.ResizeCorner(6) )
 
 	def showPanelDevices(self):
+		if not (self.layoutSliders is None) :
+			if hasattr(self, 'sliderHPlasma') :
+				del self.sliderHPlasma
+			del self.layoutSliders
 		if not (self.layout is None) :
 			self.layout.removeItem(self.icon)
 			del self.layout
-		if not (self.layoutSliders is None) :
-			del self.layoutSliders
 		self.initIcon()
 
 		if self.Settings.value('Icon_On').toString() == '1'\
@@ -384,12 +394,12 @@ class plasmaVolume(plasmascript.Applet):
 						self.sliderHPlasma[i].setRange(self.sliderMinValue, self.sliderMaxValue)
 						self.sliderHPlasma[i].mouseDoubleClickEvent = self.mouseDoubleClickEvent
 						self.sliderHPlasma[i].mouseReleaseEvent = self.mouseReleaseEvent
-						self.ao[i].setVolumeFromDevice(int(min(self.ao[i].oldValue)))
+						self.ao[i].initSliderValues()
 						if oriental_ == Qt.Vertical:
 							self.layoutSliders.addItem(self.sliderHPlasma[i], 0, i)
 						else:
 							self.layoutSliders.addItem(self.sliderHPlasma[i], i, 0)
-						self.sliderHPlasma[i].valueChanged.connect(self.ao[i].setVolume)
+						self.sliderHPlasma[i].valueChanged.connect(self.ao[i].receiveValueFromSlider)
 					else:
 						self.sliderHPlasma.append('')
 				else:
@@ -463,12 +473,12 @@ class plasmaVolume(plasmascript.Applet):
 		pass
 
 	def writeParameters(self):
-		if 'listAllDevices' in dir(self) :
+		if hasattr(self, 'listAllDevices') :
 			for i in xrange(len(self.listAllDevices)) :
 				try :
 					if self.ao[i].capability != [] :
 						muteStat = self.ao[i].MuteStat if hasattr(self.ao[i], 'MuteStat') else -1
-						s = (self.ao[i].mix, self.ao[i].capability, self.ao[i].oldValue, muteStat)
+						#s = (self.ao[i].mix, self.ao[i].capability, self.ao[i].oldValue, muteStat)
 						#print '\t%s\t%s\n\t%s\t%s' % s
 						data = QStringList() << str(self.ao[i].oldValue[0]) << str(muteStat)
 						self.config().writeEntry(self.ao[i].mix, data)
@@ -491,7 +501,7 @@ class plasmaVolume(plasmascript.Applet):
 	def down(self):
 		self.disconnect(self.applet, SIGNAL('destroyed()'), self.down)
 		x = ''
-		if 'listAllDevices' in dir(self) :
+		if hasattr(self, 'listAllDevices') :
 			for i in xrange(len(self.listAllDevices)) :
 				try :
 					if self.ao[i].capability != [] :
@@ -508,12 +518,11 @@ class plasmaVolume(plasmascript.Applet):
 		self.showConfigurationInterface()
 
 	def mousePressEvent(self, ev):
-		if ev.type() == QEvent.GraphicsSceneMousePress :
-			ev.accept()
+		ev.ignore()
 	def mouseReleaseEvent(self, ev):
+		ev.accept()
 		if ev.type() == QEvent.GraphicsSceneMouseRelease :
-			#ev.ignore()
-			self.refreshData()
+			self.refresh.emit()
 
 	def _resizeEvent(self):
 		if hasattr(self, 'sizeSelect') :

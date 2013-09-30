@@ -53,3 +53,6 @@ v.0.50.0 :
 
 v.0.51.0 :
 * added sensitivity for sliders;
+
+v.0.51.1 :
+* reimplemented the retrieve of restored volume parameters;

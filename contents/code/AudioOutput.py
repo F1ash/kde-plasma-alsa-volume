@@ -51,41 +51,52 @@ class AudioOutput():
 		if self.mixerID is not None :
 			self.capability = self.Mixer.volumecap()
 			self.oldValue = self.Mixer.getvolume()
-			# print self.oldValue, self.capability
+			#print self.oldValue, self.capability, self.mix
+			self.Mute_ = QPushButton(self.playIcon, '')
 			try :
-				Mute = 0
-				for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute() :
-					Mute += int(i)
-				if Mute == 0:
-					MuteStat = 'Active'
-					self.MuteStat = 0
-					self.Mute_ = QPushButton(self.muteIcon, '')
-				else:
-					MuteStat = 'Mute'
-					self.MuteStat = 1
-					self.Mute_ = QPushButton(self.playIcon, '')
-				#self.Mute_.setMaximumSize(40.0, 40.0)
-				self.Mute_.setToolTip('Status: ' + MuteStat)
+				self.setMuteFromDevice()
 			except alsaaudio.ALSAAudioError, x :
 				# print x, '\n'
-				self.Mute_ = ''
-			finally:
-				pass
+				self.Mute_ = None
+			finally : pass
 		else :
 			self.capability = []
+
+	def initSliderValues(self):
 		if self.Parent.config().hasKey(self.mix) :
 			data_ = self.Parent.config().readEntry(self.mix).split(',')
+			volume, state = data_.takeFirst().toInt()
+			if not state : volume = int(min(self.oldValue))
 			m, state = data_.takeLast().toInt()
 			if state and m>=0 : self.setMute(m)
-			v, state = data_.takeFirst().toInt()
-			if state and v>=0 : self.setVolume(v)
-			#print 'Init: %s\n\t\tvolume(%s),\tmute(%s)' % (self.mix, v, m)
+		else :
+			volume = int(min(self.oldValue))
+		self.setALSAMixerVolume(volume)
+		value = self.valueFromVolume(volume)
+		#print 'Init: %s\n\t\tvolume(%s)' % (self.mix, volume)
+		if hasattr(self.Parent, 'sliderHandle') :
+			self.setCurrentValue(self.Parent.sliderHandle[self.id_], value, volume)
+		if hasattr(self.Parent, 'sliderHPlasma') :
+			if (type(self.Parent.sliderHPlasma[self.id_]) is not str) :
+				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], value, volume, True)
 
-	def setVolume_timeout(self):
+	def setALSAMixerVolume(self, volume):
+		i = 0
+		for channal in self.oldValue :
+			self.Mixer.setvolume(volume, i)
+			i += 1
+
+	@pyqtSlot(int, name="receiveVolumeFromDevice")
+	def receiveVolumeFromDevice(self):
 		vol_ = alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getvolume()
-		self.setVolumeFromDevice(int(min(vol_)))
+		volume = int(min(vol_))
+		if volume != int(min(self.oldValue)) :
+			#print "_1", self.mix, volume
+			self.setValueFromDevice(volume)
+		if not (self.Mute_ is None) : self.setMuteFromDevice()
 
-	def setMuted_(self):
+	@pyqtSlot(int, name="changeMuteState")
+	def changeMuteState(self):
 		Mute = 0
 		for i in self.Mixer.getmute():
 			Mute += int(i)
@@ -104,65 +115,66 @@ class AudioOutput():
 			self.Mute_.setIcon(self.playIcon)
 		if Mute >= 0 : self.Mute_.setToolTip('Status: ' + MuteStat)
 
-	def setMuted_timeout(self):
+	def setMuteFromDevice(self):
 		Mute = 0
 		for i in alsaaudio.Mixer(self.mix, self.mixerID, cardindex = self.cardIndex).getmute():
 			Mute += int(i)
-		if self.MuteStat != Mute : self.setMute(Mute)
+		self.setMute(1 if Mute else 0)
 
-	@pyqtSlot(int, name="setVolumeFromDevice")
-	def setVolumeFromDevice(self, volume):
-		#
-		# calculating value of slider from alsa-devices volume
-		#
-		if volume == int(min(self.oldValue)) : return
+	def valueFromVolume(self, volume):
 		if self.Parent.sensitivity > 1 :
-			if volume == 100 :
-				vol_ = self.Parent.sliderMaxValue
-			else :
-				vol_ = int(round(float(volume)/self.Parent.sensitivity))
+				value = int(round(float(volume)/self.Parent.sensitivity))
 		elif self.Parent.sensitivity < 1 :
-			vol_ = volume*abs(self.Parent.sensitivity)
-		else : vol_ = volume
-		######
+			value = volume*abs(self.Parent.sensitivity)
+		else : value = volume
+		return value
 
-		for channal in self.oldValue : channal = volume
+	@pyqtSlot(int, name="setValueFromDevice")
+	def setValueFromDevice(self, volume):
+		if volume >= 100 :
+			value = self.Parent.sliderMaxValue
+		elif volume >= 0 :
+			value = self.valueFromVolume(volume)
+		else : return
 
-		self.applyParameters(vol_)
+		if volume != int(min(self.oldValue)) :
+			self.applyParameters(value, volume)
 
-	@pyqtSlot(int, name="setVolume")
-	def setVolume(self, vol_):
-		#
-		# calculating volume of alsa-devices from slider value
-		#
+	def volumeFromValue(self, value):
 		if self.Parent.sensitivity > 1 :
-			volume = vol_*self.Parent.sensitivity
+			volume = value*self.Parent.sensitivity
 		elif self.Parent.sensitivity < 1 :
-			if vol_ == self.Parent.sliderMaxValue :
-				volume = 100
-			else :
-				volume = int(round(float(vol_)/abs(self.Parent.sensitivity)))
-		else : volume = vol_
-		######
-		
-		if volume == int(min(self.oldValue)) : return
-		i = 0
-		for channal in self.oldValue:
-			self.oldValue[i] = volume
-			self.Mixer.setvolume(volume, i)
-			i += 1
-		self.applyParameters(vol_)
+			volume = int(round(float(value)/abs(self.Parent.sensitivity)))
+		else : volume = value
+		return volume
 
-	def applyParameters(self, vol_):
+	@pyqtSlot(int, name="receiveValueFromSlider")
+	def receiveValueFromSlider(self, value):
+		if value >= self.Parent.sliderMaxValue :
+			volume = 100
+		else :
+			volume = self.volumeFromValue(value)
+
+		if volume != int(min(self.oldValue)) :
+			self.setALSAMixerVolume(volume)
+			#print "2", self.mix, volume
+			self.applyParameters(value, volume)
+
+	def applyParameters(self, value, volume):
 		if hasattr(self.Parent, 'sliderHandle') and len(self.Parent.sliderHandle)-1 >= self.id_ :
-			self.setCurrentValue(self.Parent.sliderHandle[self.id_], vol_)
+			self.setCurrentValue(self.Parent.sliderHandle[self.id_], value, volume)
 		if hasattr(self.Parent, 'sliderHPlasma') and len(self.Parent.sliderHPlasma)-1 >= self.id_ :
 			if (type(self.Parent.sliderHPlasma[self.id_]) is not str) :
-				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], vol_, True)
+				self.setCurrentValue(self.Parent.sliderHPlasma[self.id_], value, volume, True)
 
-	def setCurrentValue(self, obj, vol_, panel = False):
-		obj.setValue(vol_)
-		obj.setToolTip(obj.name + ' ' + str(self.oldValue[0]) + '%')
+	def setCurrentValue(self, obj, value, volume, panel = False):
+		i = 0
+		for channal in self.oldValue :
+			self.oldValue[i] = volume
+			i += 1
+		#print "3", self.mix, value, "<->", volume, ":", self.oldValue[0], "PDial" if panel else "CDDial"
+		obj.setValue(value)
+		obj.setToolTip(obj.name + ' ' + str(int(self.oldValue[0])) + '%')
 		if panel :
 			InfoList = self.getInfoList()
 			Plasma.ToolTipManager.self().setContent( self.Parent.applet, Plasma.ToolTipContent( \
