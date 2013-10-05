@@ -500,13 +500,17 @@ class plasmaVolume(plasmascript.Applet):
 
 	def down(self):
 		self.disconnect(self.applet, SIGNAL('destroyed()'), self.down)
+		self.closeApplet.disconnect(self._close)
+		self.killThread.disconnect(self.stopWaitingVolumeChange)
+		self.refresh.disconnect(self.refreshData)
+		self.refreshByDP.disconnect(self.refreshByDevicePanel)
+		#self.applet.geometryChanged.disconnect(self._resizeEvent)
 		x = ''
 		if hasattr(self, 'listAllDevices') :
 			for i in xrange(len(self.listAllDevices)) :
 				try :
 					if self.ao[i].capability != [] :
-						self.disconnect(self, SIGNAL('changed()'), self.ao[i].setMuted_timeout)
-						self.disconnect(self, SIGNAL('changed()'), self.ao[i].setVolume_timeout)
+						self.disconnect(self, SIGNAL('changed()'), self.ao[i].receiveVolumeFromDevice)
 				except Exception, x :
 					#print x
 					pass
