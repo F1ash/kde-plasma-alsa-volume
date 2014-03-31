@@ -56,3 +56,6 @@ v.0.51.0 :
 
 v.0.51.1 :
 * reimplemented the retrieve of restored volume parameters;
+
+v.0.51.2 :
+* added the restriction of notification;

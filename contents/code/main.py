@@ -490,13 +490,20 @@ class plasmaVolume(plasmascript.Applet):
 		self.notification('Parameters are saved.')
 
 	def notification(self, msg):
-		newMailNotify = KNotification.event(KNotification.Notification, \
+		if self.Settings.value('Notify', True).toBool() :
+			saveNotify	=	KNotification.event(KNotification.Notification, \
 						QString('<b>ALSA Volume Control</b>'), \
 						QString(msg), \
 						self._icon.pixmap(QSize(64, 64)), \
 						None, \
 						KNotification.CloseOnTimeout)
-		newMailNotify.sendEvent()
+			saveNotify.setActions( QStringList() << "Don't tell anymore" )
+			saveNotify.activated['unsigned int'].connect(self.dontTellAnymore)
+			saveNotify.sendEvent()
+
+	def dontTellAnymore(self):
+		self.Settings.setValue('Notify', False)
+		self.Settings.sync()
 
 	def down(self):
 		self.disconnect(self.applet, SIGNAL('destroyed()'), self.down)
