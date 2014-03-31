@@ -184,14 +184,16 @@ class AudioOutput():
 
 	def getInfoList(self):
 		i = 0
-		_list = ''
+		_list = "<table cellspacing='0' cellpadding='10' border='0' align='left' width='80%'><tbody>"
 		for slider in self.Parent.sliderHandle :
 			if (type(slider) is not str) :
 				sliderName = slider.name
 				if sliderName in self.Parent.panelDevices :
 					name = sliderName
 					volume = self.Parent.ao[i].oldValue[0]
-					_list += '<pre><b>' + name + '&#09;' + str(volume) + '</b></pre>'
+					#_list += '<pre><b>' + name + '&#09;&#09;' + str(volume) + '</b></pre>'
+					_list += '<tr><td><b>' + name + '</b></td><td align="right"><b>' + str(volume) + '</b></td></tr>'
 			i += 1
+		_list += "</tbody></table>"
 		return _list
 
